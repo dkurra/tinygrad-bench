@@ -1,0 +1,19 @@
+# secrets -- never commit
+.env
+
+# local tooling / caches
+.venv/
+.cache/
+__pycache__/
+*.pyc
+nohup.out
+
+# live run logs (may be large; regenerated)
+results/*.log
+results/*/minisweagent.log
+results/*/exit_statuses_*.yaml
+
+# transient smoke-test artifacts
+results/smoke/
+results/_failed_smoke*/
+taskgen/tasks/smoke/

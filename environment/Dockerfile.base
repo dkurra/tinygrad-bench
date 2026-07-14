@@ -1,0 +1,42 @@
+# tinygrad-bench base evaluation image.
+#
+# One image serves every task: the per-task startup command (see
+# evaluation/tinygrad.yaml and taskgen/validate_tasks.py) checks out the
+# task's base_commit, strips git history so agents cannot recover the gold
+# fix, and re-installs tinygrad in editable mode.
+#
+# Build:  docker build -f Dockerfile.base -t tinygrad-bench:base \
+#             --build-arg TINYGRAD_COMMIT=<pin> environment/
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git clang gcc g++ make curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Full-history clone; task setup checks out the commit it needs.
+RUN git clone https://github.com/tinygrad/tinygrad /testbed
+WORKDIR /testbed
+
+# Pin the dependency layer to a known commit so image builds are reproducible.
+ARG TINYGRAD_COMMIT=e4bdc529c48957cf0b393d84e06094326bb9d2cd
+RUN git checkout -q ${TINYGRAD_COMMIT}
+
+# Heavy, shared dependency layer. Per-task installs run `pip install -e . --no-deps`
+# so the resolved package set stays identical across all tasks; tasks whose tests
+# need anything outside this set are dropped during validation.
+RUN pip install --no-cache-dir -e '.[testing_minimal]' && \
+    pip install --no-cache-dir pillow tqdm safetensors tabulate networkx bottle capstone
+
+# Containers run offline (--network none): task setup must build the editable
+# install without downloading PEP-517 build deps, so keep setuptools current
+# and rely on --no-build-isolation at install time.
+RUN pip install --no-cache-dir -U 'setuptools>=77' wheel
+
+# Git identity for the sanitizing re-init done in task setup.
+RUN git config --global user.email "bench@tinygrad-bench.local" && \
+    git config --global user.name "tinygrad-bench" && \
+    git config --global init.defaultBranch master && \
+    git config --global --add safe.directory /testbed
+
+ENV PYTHONUNBUFFERED=1
+CMD ["bash"]

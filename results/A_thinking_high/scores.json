@@ -1,0 +1,86 @@
+{
+  "tinygrad__tinygrad-16924": {
+    "instance_id": "tinygrad__tinygrad-16924",
+    "module": "mixin",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16990": {
+    "instance_id": "tinygrad__tinygrad-16990",
+    "module": "uop",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16999": {
+    "instance_id": "tinygrad__tinygrad-16999",
+    "module": "core",
+    "difficulty": "easy",
+    "score": 1.0,
+    "resolved": true,
+    "status": "ok",
+    "f2p_passed": 1,
+    "f2p_total": 1,
+    "p2p_passed": 2,
+    "p2p_total": 2
+  },
+  "tinygrad__tinygrad-16925": {
+    "instance_id": "tinygrad__tinygrad-16925",
+    "module": "mixin",
+    "difficulty": "hard",
+    "score": 0.0,
+    "resolved": false,
+    "status": "ok",
+    "f2p_passed": 0,
+    "f2p_total": 2,
+    "p2p_passed": 211,
+    "p2p_total": 211
+  },
+  "tinygrad__tinygrad-16847": {
+    "instance_id": "tinygrad__tinygrad-16847",
+    "module": "codegen",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16956": {
+    "instance_id": "tinygrad__tinygrad-16956",
+    "module": "core",
+    "difficulty": "medium",
+    "score": 0.8444,
+    "resolved": false,
+    "status": "ok",
+    "f2p_passed": 1,
+    "f2p_total": 1,
+    "p2p_passed": 38,
+    "p2p_total": 45
+  },
+  "tinygrad__tinygrad-16551": {
+    "instance_id": "tinygrad__tinygrad-16551",
+    "module": "mixin",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "ok",
+    "f2p_passed": 0,
+    "f2p_total": 1,
+    "p2p_passed": 198,
+    "p2p_total": 198
+  },
+  "tinygrad__tinygrad-16831": {
+    "instance_id": "tinygrad__tinygrad-16831",
+    "module": "schedule",
+    "difficulty": "easy",
+    "score": 1.0,
+    "resolved": true,
+    "status": "ok",
+    "f2p_passed": 1,
+    "f2p_total": 1,
+    "p2p_passed": 98,
+    "p2p_total": 98
+  }
+}

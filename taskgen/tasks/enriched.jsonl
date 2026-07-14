@@ -1,0 +1,154 @@
+{"pr_number": 16999, "pr_title": "fix disable_gc decorator reentrancy", "pr_body": null, "issues": []}
+{"pr_number": 16990, "pr_title": "simpler vconst_like", "pr_body": "also always use const_like in symbolic, fixed a crash", "issues": []}
+{"pr_number": 16970, "pr_title": "fix shape broadcast for symbolic", "pr_body": "0 or smax was wrong for the unresolved case", "issues": []}
+{"pr_number": 16956, "pr_title": "dtypes.weakfloat", "pr_body": null, "issues": []}
+{"pr_number": 16925, "pr_title": "keccak and hash to mixin [PR]", "pr_body": null, "issues": []}
+{"pr_number": 16971, "pr_title": "explicit error for unbound Variable in program", "pr_body": "also allow Tensor(UOp, dtype)", "issues": []}
+{"pr_number": 16896, "pr_title": "remove PtrDtype from tests", "pr_body": null, "issues": []}
+{"pr_number": 16854, "pr_title": "more generic fold_add_divmod_recombine [pr]", "pr_body": null, "issues": []}
+{"pr_number": 16865, "pr_title": "support non block divisible embed size", "pr_body": "- **feat: support non block divisible embed size**\n- **feat: add test**\n", "issues": []}
+{"pr_number": 16831, "pr_title": "fix multi write after read in create_schedule", "pr_body": null, "issues": []}
+{"pr_number": 16821, "pr_title": "move fs_load and fs_store to nn", "pr_body": "similar to safe_load and safe_save", "issues": []}
+{"pr_number": 16823, "pr_title": "fix WAR in create_schedule", "pr_body": "combined dep building, fixed a case that realize(x, y) != realize(y, x)", "issues": []}
+{"pr_number": 16827, "pr_title": "_apply_map_to_tensors always use walk rewrite", "pr_body": "with assign it's wrong to recursively apply, fixed a random bug that counter does not update after round 2", "issues": []}
+{"pr_number": 16811, "pr_title": "empty to CreationMixin [PR]", "pr_body": null, "issues": []}
+{"pr_number": 16792, "pr_title": "remove Tensor conv2d and dot override [PR]", "pr_body": null, "issues": []}
+{"pr_number": 16847, "pr_title": "reduce removes ones", "pr_body": null, "issues": []}
+{"pr_number": 16924, "pr_title": "bitcast to mixin [PR]", "pr_body": null, "issues": []}
+{"pr_number": 16759, "pr_title": "remove vectorize/const symbolic rule [pr]", "pr_body": null, "issues": []}
+{"pr_number": 16754, "pr_title": "don't use Ops.UNIQUE in Buffer [PR]", "pr_body": "build new_buffer with ParamArg", "issues": []}
+{"pr_number": 16719, "pr_title": "better _drop_valid_stmts [pr]", "pr_body": "also dropped the unused is_increasing", "issues": []}
+{"pr_number": 16696, "pr_title": "contiguous in wino conv", "pr_body": "also fixed test_counters", "issues": []}
+{"pr_number": 16695, "pr_title": "masked_select and nonzero to mixin [PR]", "pr_body": "with a .data stub", "issues": []}
+{"pr_number": 16663, "pr_title": "clean up _function.depth properly [PR]", "pr_body": null, "issues": []}
+{"pr_number": 16647, "pr_title": "addrspace special/range", "pr_body": null, "issues": []}
+{"pr_number": 16797, "pr_title": "remove Ops.DEVICE from Ops.PROGRAM [PR]", "pr_body": null, "issues": []}
+{"pr_number": 16646, "pr_title": "remove NOOP from AFTER with multiple srcs", "pr_body": null, "issues": []}
+{"pr_number": 16643, "pr_title": "indexing an after with all fully invalid stores is invalid", "pr_body": null, "issues": []}
+{"pr_number": 16639, "pr_title": "remove const without STACK", "pr_body": "This somehow lowers the gate count too", "issues": []}
+{"pr_number": 16611, "pr_title": "Remove if-condition from nested div rule [pr]", "pr_body": "This if condition is a remnant from old truncating div behaviour", "issues": []}
+{"pr_number": 16608, "pr_title": "fix missing cast in cstyle", "pr_body": null, "issues": []}
+{"pr_number": 16602, "pr_title": "new-style dcache_flush", "pr_body": null, "issues": []}
+{"pr_number": 16585, "pr_title": "rangeify: no copies for write+read of same slice", "pr_body": "fix_store_hazard looks pretty conservative,\r\nThis removes 384 kernels per step per device in llama. We assign to a shrink in apply_grad. Extra kernels are visible in the NULL device: `NOOPT=1 PYTHONPATH=. NULL_ALLOW_COPYOUT=1 DEV=NULL:HIP:gfx950 JITBEAM=0 examples/mlperf/training_submission_v6.0/tinycorp/benchmarks/llama31_8b/implementations/tinybox_8xMI350X/profile.sh`, kernels `E_4096n41...E_4096n70`", "issues": []}
+{"pr_number": 16599, "pr_title": "fix rangeify indexing for pad/reduce", "pr_body": null, "issues": []}
+{"pr_number": 16582, "pr_title": "UOp cast and bitcast takes DTypeLike [PR]", "pr_body": "match Tensor", "issues": []}
+{"pr_number": 16588, "pr_title": "jit: don't memplan buffers reachable from live tensors", "pr_body": "Fixes #16571.\n\nThe memory planner suballocates BUFFERs created during capture that external lazy tensor graphs still reference \u2014 here the lazy `.grad` assigned by `backward()`. The planner rewrites the BUFFER that graph reads into an arena slice, so replays never write the original BUFFER, and realizing `.grad` after the call reads freshly allocated memory, hence grads of exactly 0.0.\n\nFix: build `held_bufs` from every BUFFER reachable from a live Tensor (the same `all_tensors` scan `backward` uses) instead of only `get_parameters(ret)`. Buffers truly internal to the JIT are unreachable once the function returns, so they still get planned.\n\nThe added regression test fails on master and passes with this change on CPU and METAL.\n", "issues": [{"number": 16571, "title": "`@TinyJit` produces wrong gradients when a fresh BUFFER created by .contiguous() materializes a non-contiguous view, when memory planner is enabled.", "body": "Correct me if I'm missing something, still learning and already spent +12 hours on this issue (I will send the bill to geohot :p). This surfaced while working on DPSGD with ghost-clipping.\n\nWhen `@TinyJit` does two consecutive `backward()` calls where the loss is a per-example tensor, the first JIT capture produces correct gradients but every subsequent replay produces wrong gradients.  This only happens when memory planner is enabled (NO_MEMORY_PLANNER=0). \n\nIf the loss is already a scalar (`.mean()` then `.backward()`), or if `backward()` is called only once, the bug does not appear. The first replay is always wrong, every replay after that is the same wrong answer.\n\nSpecifically, these must be present (in my tests):\n\n1. A **per-example** loss of shape `(B,)`, for example,  `gather`-based sparse CE\n2. **Two consecutive `backward()` calls** inside the JIT (the second one can be a scalar multiple of the first, e.g. `(loss * 0.5).sum().backward()`)\n3. The forward pass must allocate at least one **fresh BUFFER** via `.contiguous()` on a non-contiguous view. The simplest triggers are `X.permute(0, 3, 1, 2).contiguous()` (NHWC -> NCHW) or `X.transpose(2, 3).contiguous()` (any non-contig view -> fresh BUFFER). \n\nA plain `.contiguous()` on already-contiguous data is a no-op and does **not** trigger the bug. A `.permute()` without `.contiguous()` also does not trigger it, because no new BUFFER is materialized.\n\n- tinygrad version: `0.13.0`\n- Device: Tried both `CPU` and `Metal`. \n- Running on Mac M2\n\n## Root cause\n\n*write-after-read* issue in memory planner.  This issue does not reproduce when (NO_MEMORY_PLANNER=1). \n\n`memory_plan_rewrite` in `tinygrad/schedule/memory.py` reuses the memory of intermediate `BUFFER`s whose lifetimes it thinks do not overlap. The `held_bufs` set passed in by `TinyJit.__call__` (in `tinygrad/engine/jit.py`) only contains:\n\n- pre-existing live buffers (`set(buffers)`)\n- the `.buf_uop` of returned parameters (`get_parameters(ret)`)\n\nIt does **not** contain the BUFFERs that the JIT capture *itself* creates for the intermediate values of the new linear. So those BUFFERs go through the memory planner. The planner computes their lifetimes using the linear toposort and concludes that two non-overlapping BUFFERs can share one allocator slot.\n\nBut for a per-example loss + two `backward()`s, the second backward's `.grad` accumulation reads from BUFFERs that the planner has already freed. The planner reuses those slots for BUFFERs that are alive in the replay, so by the time the `.grad` reads them, they contain unrelated data.\n\nI assume the first capture (`self.cnt == 1`) is correct because the planner runs on the *replay's* linear but the data layout being read is still the capture's. The replay is wrong because the capture's intermediate buffers are no longer populated when the planner re-runs.\n\nWe can see this clearly in the repro script:\n```\nlinear has 15 BUFFERs total, 10 held (skipped), 5 planned (suballocated)\n```\n\nSeems like the 5 suballocated BUFFERs are the ones whose memory is being reused across the two backward() kernels.\n\n## My fix\n\nI'm not sure if this is the correct way to go around this, but here's what I did (other option was to disable memory planner). Hoping someone smarter than me will see what's up.\n\nIn `TinyJit.__call__` (around line 32 of `tinygrad/engine/jit.py`), expand `held_bufs` to include *every* `Ops.BUFFER` in the captured linear, not just pre-existing ones and parameter buffers:\n\n```python\nheld_bufs = set(buffers) | {t.uop.buf_uop for t in get_parameters(ret) if t.uop.buf_uop.op is Ops.BUFFER}\n\n# FIX: hold all BUFFERs in the captured linear so the memory planner\n# does not suballocate intermediates that subsequent .grad reads depend on.\nfor n in big_linear.toposort():\n    if n.op is Ops.BUFFER:\n        held_bufs.add(n)\n\nlinear = jit_lower(big_linear, held_bufs, input_buf_uops)\n```\n\n\n\n## Repro\n\n```python\n# repro.py\nimport numpy as np\nfrom tinygrad import Tensor, TinyJit, nn, Context\n\n\ndef per_example_sparse_ce(logits, y):\n    lse = logits.logsumexp(axis=-1, keepdim=True)\n    return -(logits - lse).gather(1, y.reshape(-1, 1)).reshape(-1)\n\n\ndef step(conv, X, y):\n    \"\"\"Forward + 2x backward.\"\"\"\n\n    # .contiguous() materializes the permuted view into a fresh BUFFER, without it, conv(Xn) reads the permuted view directly\n    # so no new BUFFER is created for the planner to suballocate?\n    Xn = X.permute(0, 3, 1, 2).contiguous() if X.shape[-1] == 3 else X\n\n    logits = conv(Xn).relu().max_pool2d(2).flatten(1)\n    loss = per_example_sparse_ce(logits, y)\n\n    loss.sum().backward() # First backward: correct, populates .grad for the capture.\n    conv.weight.grad = None\n    (loss * 0.5).sum().backward() # Second backward: wrong, reads from corrupted buffers that the planner has suballocated.\n    return loss.mean().realize()\n\n\nB, C, H, W = 16, 10, 100, 100\nnp.random.seed(42); Tensor.manual_seed(42)\nconv = nn.Conv2d(3, C, kernel_size=3, padding=1)\nX = Tensor(np.random.randn(B, H, W, 3).astype(np.float32))\ny = Tensor(np.random.randint(0, C, size=B).astype(np.int32))\n\nwith Context(DEV='CPU'):\n    # Eager reference\n    step(conv, X, y)\n    ref = conv.weight.grad.numpy().copy()\n    print(f\"Reference: conv.weight.grad.sum() = {ref.sum():+.6f}\")\n\n    # JIT: same `step`, same `conv`, same inputs\n    jit_step = TinyJit(Tensor.train()(step))\n\n    for s in range(8):\n        jit_step(conv, X, y)\n        g = conv.weight.grad.numpy()\n        ok = np.allclose(g, ref, rtol=1e-4, atol=1e-5)\n        print(f\"step {s}: conv.weight.grad.sum() = {g.sum():+.6f}  matches_ref = {ok}\")\n```\n\n### (1) Planner ON, no fix (default)\n\nCommand: `python repro.py`\n\n```\nReference: conv.weight.grad.sum() = +2.937127\nstep 0: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 1: conv.weight.grad.sum() = +0.000000  matches_ref = False\nstep 2: conv.weight.grad.sum() = +0.000000  matches_ref = False\nstep 3: conv.weight.grad.sum() = +0.000000  matches_ref = False\nstep 4: conv.weight.grad.sum() = +0.000000  matches_ref = False\nstep 5: conv.weight.grad.sum() = +0.000000  matches_ref = False\nstep 6: conv.weight.grad.sum() = +0.000000  matches_ref = False\nstep 7: conv.weight.grad.sum() = +0.000000  matches_ref = False\n```\n\n\n\n### (2) Planner OFF (`NO_MEMORY_PLANNER=1`)\n\nCommand: `NO_MEMORY_PLANNER=1 python repro.py`\n\n```\nReference: conv.weight.grad.sum() = +2.937127\nstep 0: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 1: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 2: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 3: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 4: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 5: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 6: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 7: conv.weight.grad.sum() = +2.937127  matches_ref = True\n```\n\n### (3) Planner ON, with the fix I mentioned above\n\nCommand: `python repro.py` after applying the `held_bufs` expansion\nshown above.\n\n```\nReference: conv.weight.grad.sum() = +2.937127\nstep 0: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 1: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 2: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 3: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 4: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 5: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 6: conv.weight.grad.sum() = +2.937127  matches_ref = True\nstep 7: conv.weight.grad.sum() = +2.937127  matches_ref = True\n```\n\nSame as (2), but the planner still runs. It just finds nothing to suballocate within the JIT's captured linear, while non-JIT paths retain full suballocation. "}]}
+{"pr_number": 16562, "pr_title": "PADTO pads Invalids", "pr_body": null, "issues": []}
+{"pr_number": 16551, "pr_title": "move functional part of rand to RandMixin", "pr_body": null, "issues": []}
+{"pr_number": 16559, "pr_title": "rangeify: fix cost function for AFTER(out, CALL)", "pr_body": "remove_bufferize was traversing past AFTER(CALL) and counting its srcs as accessed buffers.\r\nThis copied the QKV bf16 GEMM in llama. -454 kernel launches per step.", "issues": []}
+{"pr_number": 16548, "pr_title": "more readable null graph profile in VIZ", "pr_body": "it used to sample perf_counter timestamp per graph entry, but in a real graph kernels run with little gaps in between.\r\nnew viz:\r\n<img width=\"3840\" height=\"1532\" alt=\"image\" src=\"https://github.com/user-attachments/assets/9ee8953c-45b6-4d69-9946-b445249e7878\" />\r\n", "issues": []}
+{"pr_number": 16538, "pr_title": "UOp.shard support axis=None [PR]", "pr_body": "match Tensor", "issues": []}
+{"pr_number": 16532, "pr_title": "advance indexing to mixin [PR]", "pr_body": null, "issues": []}
+{"pr_number": 16526, "pr_title": "move gradient to mixin [PR]", "pr_body": null, "issues": []}
+{"pr_number": 16510, "pr_title": "fix transform_precompiled_call for MULTI", "pr_body": "based on my understanding for https://github.com/tinygrad/tinygrad/pull/16084", "issues": []}
+{"pr_number": 16493, "pr_title": "fix deviceless materialize device", "pr_body": "symbolic arange currently does not fuse, which creates a deviceless UOp post rangeify that needs a device to bufferize", "issues": []}
+{"pr_number": 16488, "pr_title": "remove CONST(DEVICE) from const_like", "pr_body": null, "issues": []}
+{"pr_number": 16496, "pr_title": "deviceless const skip axis check", "pr_body": "#16488 broke MP llama", "issues": []}
+{"pr_number": 16489, "pr_title": "remove use of full with buffer=False and non-None device=", "pr_body": null, "issues": []}
+{"pr_number": 16450, "pr_title": "fix word wrap", "pr_body": null, "issues": []}
+{"pr_number": 16423, "pr_title": "rename clangjit to clang", "pr_body": null, "issues": []}
+{"pr_number": 16412, "pr_title": ".const() should not ignore dtype", "pr_body": "fixed a bug in postrange, also cleaner", "issues": []}
+{"pr_number": 16414, "pr_title": "flip offset and shape in pad and shrink", "pr_body": null, "issues": []}
+{"pr_number": 16385, "pr_title": "remove allow_any_len from store", "pr_body": null, "issues": []}
+{"pr_number": 16432, "pr_title": "limit CONST(UNIQUE) to invalids only", "pr_body": null, "issues": []}
+{"pr_number": 16483, "pr_title": "make full with buffer=False deviceless", "pr_body": "affects arange and eye", "issues": []}
+{"pr_number": 16364, "pr_title": "move buffer view offset to src", "pr_body": null, "issues": []}
+{"pr_number": 16363, "pr_title": "viz/cli: add --interval", "pr_body": "the default viz.cli -t aggregates the entire profile, which may include one time setup costs. We care about optimizing a hot path (llama steady state train, llm decode).\r\n\r\nI've been asking llms to write this on top of viz.cli --json too many times that I think it's worth having it builtin.", "issues": []}
+{"pr_number": 16382, "pr_title": "remove unique_const", "pr_body": null, "issues": []}
+{"pr_number": 16354, "pr_title": "gather to single device", "pr_body": null, "issues": []}
+{"pr_number": 16311, "pr_title": "full(buffer=True)", "pr_body": "make full a buffer with flag to turn off", "issues": []}
+{"pr_number": 16298, "pr_title": "don't use dtype vec for image idx", "pr_body": null, "issues": []}
+{"pr_number": 16295, "pr_title": "UOp.clone [pr]", "pr_body": "generates the store after structure", "issues": []}
+{"pr_number": 16325, "pr_title": "Tensor.requires_grad -> is_param", "pr_body": "for optimizer", "issues": []}
+{"pr_number": 16344, "pr_title": "remove Tensor.from_uop", "pr_body": "and no device for const in Tensor init", "issues": []}
+{"pr_number": 16276, "pr_title": "extent jit const error to deviceless inputs", "pr_body": null, "issues": []}
+{"pr_number": 16277, "pr_title": "remove _force_unique from Tensor init", "pr_body": null, "issues": []}
+{"pr_number": 16274, "pr_title": "clean up deviceless const _buffer", "pr_body": "process on CPU similar to multi", "issues": []}
+{"pr_number": 16268, "pr_title": "PYTHONREMU: V_CVT_PK_BF8_F32 saturation", "pr_body": null, "issues": []}
+{"pr_number": 16271, "pr_title": "clone can take device", "pr_body": "useful to materialize const on a specific device", "issues": []}
+{"pr_number": 16372, "pr_title": "remove unique_const", "pr_body": null, "issues": []}
+{"pr_number": 16255, "pr_title": "Tensor.device and UOp.device can be None", "pr_body": "removed `_device`", "issues": []}
+{"pr_number": 16248, "pr_title": "assign for deviceless const source", "pr_body": null, "issues": []}
+{"pr_number": 16251, "pr_title": "multi alu with deviceless const", "pr_body": null, "issues": []}
+{"pr_number": 16247, "pr_title": "to and shard is noop for deviceless uop", "pr_body": null, "issues": []}
+{"pr_number": 16243, "pr_title": "deviceless const from UOp", "pr_body": null, "issues": []}
+{"pr_number": 16227, "pr_title": "remove more invalid", "pr_body": null, "issues": []}
+{"pr_number": 16210, "pr_title": "better assert when setitem a refed tensor", "pr_body": "also decouple from requires_grad", "issues": []}
+{"pr_number": 16205, "pr_title": "gradient for STORE/AFTER ala clone", "pr_body": null, "issues": []}
+{"pr_number": 16175, "pr_title": "svd to mixin", "pr_body": null, "issues": []}
+{"pr_number": 16173, "pr_title": "qr to mixin", "pr_body": null, "issues": []}
+{"pr_number": 16169, "pr_title": "allow after on contiguous in spec", "pr_body": null, "issues": []}
+{"pr_number": 16164, "pr_title": "fix cumsum dtype for 0d input", "pr_body": null, "issues": []}
+{"pr_number": 16161, "pr_title": "explicit args to Tensor.rand", "pr_body": "added requires_grad, other kwargs were silently dropped", "issues": []}
+{"pr_number": 16152, "pr_title": "time_call", "pr_body": null, "issues": []}
+{"pr_number": 16212, "pr_title": "requires_grad cannot be None", "pr_body": "final goal is to remove requires_grad, first change the default to True, and don't allow None", "issues": []}
+{"pr_number": 16132, "pr_title": "Update the spec in spec.py to match the current state", "pr_body": null, "issues": []}
+{"pr_number": 16149, "pr_title": "fix wrong kwargs passed into rands", "pr_body": "working towards explicit args for these", "issues": []}
+{"pr_number": 16101, "pr_title": "viz/cli: schedule renderer", "pr_body": "This enables:\r\n- Recovering kernel metadata: https://opncd.ai/share/EJ8gV2kp\r\n- Tracing producers and consumers of global memory, possibly across multiple Tensor.realizes\r\n- Exposing fusion / access pattern in command line\r\n\r\nCLI prints same JSON web viz uses to render nice looking svgs. LLMs are good at writing renderers to beautify it in command line:\r\n<img width=\"2488\" height=\"494\" alt=\"image\" src=\"https://github.com/user-attachments/assets/781c82c6-cbef-445e-9be4-da8d579c2f2e\" />\r\n\r\n", "issues": []}
+{"pr_number": 16124, "pr_title": "viz/cli: emit all runs of selected kernel, json fixes", "pr_body": null, "issues": []}
+{"pr_number": 16150, "pr_title": "fix randperm and _multi_like drop requires_grad", "pr_body": null, "issues": []}
+{"pr_number": 16084, "pr_title": "fix: don't copy precompiled custom kernel outputs", "pr_body": null, "issues": []}
+{"pr_number": 16089, "pr_title": "fix: don't copy on slice of DP weight", "pr_body": null, "issues": []}
+{"pr_number": 16077, "pr_title": "mod and fmod to mixin", "pr_body": null, "issues": []}
+{"pr_number": 16066, "pr_title": "stronger divmod_recombine", "pr_body": null, "issues": []}
+{"pr_number": 16062, "pr_title": "fix divmod recombine for floordiv", "pr_body": null, "issues": []}
+{"pr_number": 16061, "pr_title": "better divmod late rewrite", "pr_body": "better order", "issues": []}
+{"pr_number": 16058, "pr_title": "relax fold_divmod_general", "pr_body": null, "issues": []}
+{"pr_number": 16054, "pr_title": "fix double div rewrites", "pr_body": null, "issues": []}
+{"pr_number": 16048, "pr_title": "use FLOORDIV and FLOORMOD", "pr_body": "also removed CORRECT_DIVMOD_FOLDING", "issues": []}
+{"pr_number": 16038, "pr_title": "Ops.FLOORDIV and Ops.FLOORMOD", "pr_body": "lowered into IDIV and MOD in get_late_rewrite_patterns", "issues": []}
+{"pr_number": 16162, "pr_title": "add gelu approximate=\"none\" (match pytorch)", "pr_body": "No AI was used for this. Ported ViT-B-32 with gelu(approximate=\"none\") passes atol=1e-4 and gelu(approximate=\"tanh\") is above 1e-2. Adding `approximate` with \"none\" ~~(default)~~ and \"tanh\" should match Pytorch (checked version 2.11 atm of writing).\r\n\r\nThe only change that was needed to pass CI was in onnx to just use the new api. There are a bunch of other places in the code base that define their own gelu for similar reasons that could now just use Tensor.gelu but patching them is beyond the scope of this PR.", "issues": []}
+{"pr_number": 16031, "pr_title": "viz/cli: aggregate flops in -t", "pr_body": "for llama profile.sh it should show per step timings", "issues": []}
+{"pr_number": 16028, "pr_title": "feat: handle multioutput kernel grads", "pr_body": null, "issues": []}
+{"pr_number": 16170, "pr_title": "jittable masked_select and nonzero", "pr_body": "make jittable with `size=`, matches jax", "issues": []}
+{"pr_number": 16026, "pr_title": "runtime/graph: avoid core_id runtimevar merge conflicts", "pr_body": "fixes HCQ graph construction when CPU kernels on the same device place `core_id` in different arg slots.\r\n\r\n`core_id` is filled per-kernel at exec time, so normalize it before merging graph `device_vars`.\r\n\r\nadded regression test fails on master with the `core_id` merge conflict.", "issues": []}
+{"pr_number": 15995, "pr_title": "no replacement multinomial", "pr_body": "Efraimidis\u2013Spirakis", "issues": []}
+{"pr_number": 15990, "pr_title": "input validation for rand functions", "pr_body": null, "issues": []}
+{"pr_number": 15972, "pr_title": "_bits_to_rand to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15968, "pr_title": "UOp.bitcast noop early return", "pr_body": "matches Tensor", "issues": []}
+{"pr_number": 15967, "pr_title": "get_runner -> get_runtime", "pr_body": null, "issues": []}
+{"pr_number": 15959, "pr_title": "_threefry_random_bits to mixin", "pr_body": "start RandMixin", "issues": []}
+{"pr_number": 15948, "pr_title": "sqtt: correct rdna4 structs", "pr_body": null, "issues": []}
+{"pr_number": 15953, "pr_title": "local optimize as rewrite", "pr_body": null, "issues": []}
+{"pr_number": 15946, "pr_title": "move Tensor.pad to OpMixin", "pr_body": null, "issues": []}
+{"pr_number": 15944, "pr_title": "_pad_circular and _pad_reflect_replicate to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15937, "pr_title": "estimates from graph", "pr_body": null, "issues": []}
+{"pr_number": 15931, "pr_title": "viz/cli: unify profile and rewrites, -s ALL default", "pr_body": null, "issues": []}
+{"pr_number": 16078, "pr_title": "div to mixin", "pr_body": "also deleted idiv method", "issues": []}
+{"pr_number": 15918, "pr_title": "nll_loss to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15917, "pr_title": "scatter to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15910, "pr_title": "sort argsort topk allclose to mixin", "pr_body": null, "issues": []}
+{"pr_number": 16014, "pr_title": "Tensor.fmod", "pr_body": "c-style mod matches torch", "issues": []}
+{"pr_number": 15942, "pr_title": "programinfo", "pr_body": null, "issues": []}
+{"pr_number": 15915, "pr_title": "schedule() -> schedule_linear() in tests", "pr_body": null, "issues": []}
+{"pr_number": 15909, "pr_title": "viz/cli: select kernel events in -s DEV", "pr_body": null, "issues": []}
+{"pr_number": 15903, "pr_title": "avg_pool2d, max_pool2d to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15902, "pr_title": "scatter_reduce and sparse_categorical_crossentropy to mixin", "pr_body": "also use `.ne` to fix `# type: ignore[comparison-overlap]`", "issues": []}
+{"pr_number": 15898, "pr_title": "fix isclose mixin", "pr_body": "use `.eq` instead of `==`", "issues": []}
+{"pr_number": 15897, "pr_title": "broadcast in ElementwiseMixin.div [pr]", "pr_body": null, "issues": []}
+{"pr_number": 15895, "pr_title": "interpolate and cross_entropy to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15891, "pr_title": "gather to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15890, "pr_title": "logcumsumexp, argmax, argmin, sequential to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15879, "pr_title": "Tensor method raise if arg is on different device", "pr_body": "instead of implicit `to`. this matches torch", "issues": []}
+{"pr_number": 15877, "pr_title": "cummax/cummin to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15875, "pr_title": "UOp binary op broadcasts dtype", "pr_body": "matches Tensor", "issues": []}
+{"pr_number": 15871, "pr_title": "AMX in arch, better docs", "pr_body": null, "issues": []}
+{"pr_number": 15848, "pr_title": "jit: precompile", "pr_body": null, "issues": []}
+{"pr_number": 15874, "pr_title": "simplify bool.cast() != const", "pr_body": null, "issues": []}
+{"pr_number": 15861, "pr_title": "_one_hot_along_dim and one_hot to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15857, "pr_title": "triu tril _tri to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15854, "pr_title": "linspace and eye to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15904, "pr_title": "update Tensor.allclose to return Tensor", "pr_body": "matches jax", "issues": []}
+{"pr_number": 15852, "pr_title": "arange to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15850, "pr_title": "zeros, ones, invalids to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15840, "pr_title": "full to mixin", "pr_body": "with unique_const", "issues": []}
+{"pr_number": 15838, "pr_title": "conv2d and conv_transpose2d to mixin", "pr_body": null, "issues": []}
+{"pr_number": 15833, "pr_title": "einsum to ReduceMixin", "pr_body": null, "issues": []}
+{"pr_number": 15889, "pr_title": "fix resolve param", "pr_body": null, "issues": []}
+{"pr_number": 15816, "pr_title": "UOp.empty and UOp.empty_like", "pr_body": "Tensor.empty and Tensor.empty_like use these, and removed _buffer_like", "issues": []}
+{"pr_number": 15787, "pr_title": "add threefry const folding", "pr_body": "adds const folding for the threefry op. uses the existing threefry function as a base and runs simplify to get the final const", "issues": []}
+{"pr_number": 15849, "pr_title": "Tensor.invalid -> Tesnor.invalids", "pr_body": "matches ones and zeros, and to not share name with UOp.invalid", "issues": []}
+{"pr_number": 15778, "pr_title": "softmax and friends to mixin", "pr_body": "with detach now", "issues": []}
+{"pr_number": 15770, "pr_title": "another form of assign to itself", "pr_body": null, "issues": []}
+{"pr_number": 15784, "pr_title": "run_linear try 2", "pr_body": null, "issues": []}
+{"pr_number": 15747, "pr_title": "exclude __del__ from TRACEMETA wrapping", "pr_body": "fixes #15598", "issues": [{"number": 15598, "title": "TRACEMETA wraps Tensor.__del__, causing a shutdown-time exception.", "body": "I found a shutdown-time bug in tinygrad 0.12.0 on Python 3.14.3.\nI tried MNIST Tutorial code.  The program itself completes successfully, but interpreter shutdown prints a traceback.\n\nThe program prints the result and exits with code 0, but shutdown prints:\n\n  Exception ignored while calling deallocator <function suppress_finalizing.<locals>.wrapper at 0x1114b2350>:\n  Traceback (most recent call last):\n    File \".../tinygrad/tensor.py\", line 4016, in _wrapper\n    File \".../python3.14/contextlib.py\", line 141, in __enter__\n    File \".../tinygrad/helpers.py\", line 294, in cpu_profile\n    File \".../tinygrad/helpers.py\", line 255, in perf_counter_us\n  TypeError: 'NoneType' object is not callable\n\nTensor.__del__ is already protected with @suppress_finalizing, but the TRACEMETA >= 1 auto-wrap logic later wraps nearly all Tensor methods with _metadata_wrapper, including __del__.\n\n## Fix\n\nExclude __del__ from the metadata auto-wrap, on tensor.py\n\nFROM\n```\n  if TRACEMETA >= 1:\n    for name, fn in inspect.getmembers(Tensor, inspect.isfunction):\n      if name in [\"__class__\", \"__init__\", \"__new__\", \"__repr__\", \"backward\", \"sequential\", \"gradient\"]: continue\n      setattr(Tensor, name, functools.wraps(fn)(_metadata_wrapper(fn)))\n```\nTO\n```\n  if TRACEMETA >= 1:\n    for name, fn in inspect.getmembers(Tensor, inspect.isfunction):\n      if name in [\"__class__\", \"__del__\", \"__init__\", \"__new__\", \"__repr__\", \"backward\", \"sequential\", \"gradient\"]: continue\n      setattr(Tensor, name, functools.wraps(fn)(_metadata_wrapper(fn)))\n```\n\n\n  I verified locally that this removes the shutdown traceback while preserving normal execution."}]}

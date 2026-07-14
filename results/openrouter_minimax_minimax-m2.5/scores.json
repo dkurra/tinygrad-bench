@@ -1,0 +1,250 @@
+{
+  "tinygrad__tinygrad-16990": {
+    "instance_id": "tinygrad__tinygrad-16990",
+    "module": "uop",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16956": {
+    "instance_id": "tinygrad__tinygrad-16956",
+    "module": "core",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16847": {
+    "instance_id": "tinygrad__tinygrad-16847",
+    "module": "codegen",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16924": {
+    "instance_id": "tinygrad__tinygrad-16924",
+    "module": "mixin",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16896": {
+    "instance_id": "tinygrad__tinygrad-16896",
+    "module": "codegen",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16831": {
+    "instance_id": "tinygrad__tinygrad-16831",
+    "module": "schedule",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16925": {
+    "instance_id": "tinygrad__tinygrad-16925",
+    "module": "mixin",
+    "difficulty": "hard",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16602": {
+    "instance_id": "tinygrad__tinygrad-16602",
+    "module": "runtime",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16363": {
+    "instance_id": "tinygrad__tinygrad-16363",
+    "module": "viz",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16588": {
+    "instance_id": "tinygrad__tinygrad-16588",
+    "module": "engine",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16132": {
+    "instance_id": "tinygrad__tinygrad-16132",
+    "module": "codegen",
+    "difficulty": "hard",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16865": {
+    "instance_id": "tinygrad__tinygrad-16865",
+    "module": "nn",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16325": {
+    "instance_id": "tinygrad__tinygrad-16325",
+    "module": "nn",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16423": {
+    "instance_id": "tinygrad__tinygrad-16423",
+    "module": "renderer",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16489": {
+    "instance_id": "tinygrad__tinygrad-16489",
+    "module": "llm",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16821": {
+    "instance_id": "tinygrad__tinygrad-16821",
+    "module": "core",
+    "difficulty": "hard",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-15948": {
+    "instance_id": "tinygrad__tinygrad-15948",
+    "module": "renderer",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-15967": {
+    "instance_id": "tinygrad__tinygrad-15967",
+    "module": "engine",
+    "difficulty": "hard",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16811": {
+    "instance_id": "tinygrad__tinygrad-16811",
+    "module": "mixin",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-15931": {
+    "instance_id": "tinygrad__tinygrad-15931",
+    "module": "viz",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16971": {
+    "instance_id": "tinygrad__tinygrad-16971",
+    "module": "core",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16854": {
+    "instance_id": "tinygrad__tinygrad-16854",
+    "module": "uop",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-15915": {
+    "instance_id": "tinygrad__tinygrad-15915",
+    "module": "engine",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-15720": {
+    "instance_id": "tinygrad__tinygrad-15720",
+    "module": "apps",
+    "difficulty": "easy",
+    "score": 1.0,
+    "resolved": true,
+    "status": "ok",
+    "f2p_passed": 1,
+    "f2p_total": 1,
+    "p2p_passed": 1,
+    "p2p_total": 1
+  },
+  "tinygrad__tinygrad-16754": {
+    "instance_id": "tinygrad__tinygrad-16754",
+    "module": "core",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16823": {
+    "instance_id": "tinygrad__tinygrad-16823",
+    "module": "schedule",
+    "difficulty": "medium",
+    "score": 0.0,
+    "resolved": false,
+    "status": "empty_patch"
+  },
+  "tinygrad__tinygrad-16999": {
+    "instance_id": "tinygrad__tinygrad-16999",
+    "module": "core",
+    "difficulty": "easy",
+    "score": 1.0,
+    "resolved": true,
+    "status": "ok",
+    "f2p_passed": 1,
+    "f2p_total": 1,
+    "p2p_passed": 2,
+    "p2p_total": 2
+  },
+  "tinygrad__tinygrad-16551": {
+    "instance_id": "tinygrad__tinygrad-16551",
+    "module": "mixin",
+    "difficulty": "easy",
+    "score": 0.0,
+    "resolved": false,
+    "status": "ok",
+    "f2p_passed": 0,
+    "f2p_total": 1,
+    "p2p_passed": 198,
+    "p2p_total": 198
+  },
+  "tinygrad__tinygrad-16162": {
+    "instance_id": "tinygrad__tinygrad-16162",
+    "module": "mixin",
+    "difficulty": "easy",
+    "score": 1.0,
+    "resolved": true,
+    "status": "ok",
+    "f2p_passed": 2,
+    "f2p_total": 2,
+    "p2p_passed": 415,
+    "p2p_total": 415
+  }
+}

@@ -1,0 +1,502 @@
+{
+  "tinygrad__tinygrad-16999": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16999",
+    "model_patch": "diff --git a/tinygrad/helpers.py b/tinygrad/helpers.py\nindex 92b3362..798b5ee 100644\n--- a/tinygrad/helpers.py\n+++ b/tinygrad/helpers.py\n@@ -572,11 +572,15 @@ class tqdm(Generic[T]):\n def trange(n:int, **kwargs) -> tqdm[int]: return tqdm(range(n), total=n, **kwargs)\n \n class disable_gc(contextlib.ContextDecorator):\n+  _depth = 0\n   def __enter__(self):\n-    self._was_enabled = gc.isenabled()\n-    if self._was_enabled: gc.disable()\n+    if type(self)._depth == 0:\n+      self._was_enabled = gc.isenabled()\n+      if self._was_enabled: gc.disable()\n+    type(self)._depth += 1\n   def __exit__(self, *exc):\n-    if self._was_enabled: gc.enable()\n+    type(self)._depth -= 1\n+    if type(self)._depth == 0 and self._was_enabled: gc.enable()\n \n # *** universal support for code object pickling\n \n"
+  },
+  "tinygrad__tinygrad-16924": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16924",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16990": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16990",
+    "model_patch": "diff --git a/tinygrad/uop/ops.py b/tinygrad/uop/ops.py\nindex 2a2f3da..0fbb089 100644\n--- a/tinygrad/uop/ops.py\n+++ b/tinygrad/uop/ops.py\n@@ -548,11 +548,8 @@ class UOp(RandMixin, metaclass=UOpMetaClass):\n   def const_like(self, b:ConstLike, dtype:DType|None=None):\n     return UOp.const(dtype or self.dtype, b, shape=self._shape)\n   def vconst_like(self, b:ConstLike, dtype:DType|None=None):\n-    # for use after movement ops have been removed\n-    ret = UOp.const(dtype or self.dtype, b)\n-    if self.shape == (): return ret\n-    if len(self.shape) == 1: return UOp(Ops.STACK, src=(ret,)*self.max_numel())\n-    raise RuntimeError(f\"vconst_like only works on 0 or 1D shapes, not {self.shape}\")\n+    # for use after movement ops have been removed, generate a constant and broadcast it\n+    return self.const_like(b, dtype)\n   def ufix(self, x):\n     if isinstance(x, UOp): return x\n     # float self keeps its dtype for any scalar, int self only for int/Invalid scalars\n"
+  },
+  "tinygrad__tinygrad-16847": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16847",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16956": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16956",
+    "model_patch": "diff --git a/tinygrad/dtype.py b/tinygrad/dtype.py\nindex cc21e33..29f37c7 100644\n--- a/tinygrad/dtype.py\n+++ b/tinygrad/dtype.py\n@@ -97,7 +97,7 @@ class DType(metaclass=DTypeMetaClass):\n class dtypes:\n   @staticmethod\n   @functools.cache\n-  def is_float(x: DType) -> bool: return x.scalar() in dtypes.floats\n+  def is_float(x: DType) -> bool: return x.scalar() in dtypes.floats or x.scalar() == dtypes.weakfloat\n   @staticmethod # static methods on top, or bool in the type info will refer to dtypes.bool\n   @functools.cache\n   def is_int(x: DType) -> bool: return x.scalar() in (dtypes.ints + (dtypes.weakint, dtypes.index))\n@@ -123,6 +123,7 @@ class dtypes:\n             dtypes.fp8e4m3: (4, 3), dtypes.fp8e5m2: (5, 2), dtypes.fp8e4m3fnuz: (4, 3), dtypes.fp8e5m2fnuz: (5, 2)}[dtype]\n   void: Final[DType] = DType.new(-1, 0, \"void\", None)\n   weakint: Final[DType] = DType.new(0, 800, \"weakint\", None)\n+  weakfloat: Final[DType] = DType.new(8, 800, \"weakfloat\", None)\n   index: Final[DType] = DType.new(0, 800, \"index\", None)  # NOTE: not in the promo lattice: index math never mixes dtypes\n   bool: Final[DType] = DType.new(0, 1, \"bool\", '?')\n   int8: Final[DType] = DType.new(1, 8, \"signed char\", 'b')\n@@ -178,7 +179,8 @@ def to_dtype(dtype:DTypeLike) -> DType: return dtype if isinstance(dtype, DType)\n promo_lattice = { dtypes.bool: [dtypes.weakint], dtypes.weakint: [dtypes.int8, dtypes.uint8],\n   dtypes.int8: [dtypes.int16], dtypes.int16: [dtypes.int32], dtypes.int32: [dtypes.int64],\n   dtypes.int64: [dtypes.uint64], dtypes.uint8: [dtypes.int16, dtypes.uint16], dtypes.uint16: [dtypes.int32, dtypes.uint32],\n-  dtypes.uint32: [dtypes.int64, dtypes.uint64], dtypes.uint64: [dtypes.fp8e4m3, dtypes.fp8e5m2, dtypes.fp8e4m3fnuz, dtypes.fp8e5m2fnuz],\n+  dtypes.uint32: [dtypes.int64, dtypes.uint64], dtypes.uint64: [dtypes.weakfloat],\n+  dtypes.weakfloat: [dtypes.fp8e4m3, dtypes.fp8e5m2, dtypes.fp8e4m3fnuz, dtypes.fp8e5m2fnuz],\n   dtypes.fp8e4m3: [dtypes.float16, dtypes.bfloat16], dtypes.fp8e5m2: [dtypes.float16, dtypes.bfloat16],\n   dtypes.fp8e4m3fnuz: [dtypes.float16, dtypes.bfloat16], dtypes.fp8e5m2fnuz: [dtypes.float16, dtypes.bfloat16],\n   dtypes.float16: [dtypes.float32], dtypes.bfloat16: [dtypes.float32], dtypes.float32: [dtypes.float64], }\n@@ -191,8 +193,8 @@ def least_upper_dtype(*ds:DType) -> DType:\n   return min(set.intersection(*[_get_recursive_parents(d.scalar()) for d in ds]))\n def least_upper_float(dt:DType) -> DType: return dt if dtypes.is_float(dt) else least_upper_dtype(dt, dtypes.default_float)\n \n-DTYPES_DICT = {k: v for k, v in dtypes.__dict__.items() if isinstance(v, DType) and not k.startswith((\"default\", \"void\", \"weakint\", \"index\", \"_\"))}\n-INVERSE_DTYPES_DICT = {**{v.name:k for k,v in DTYPES_DICT.items()}, \"void\": \"void\", \"weakint\":\"weakint\", \"index\":\"index\"}\n+DTYPES_DICT = {k: v for k, v in dtypes.__dict__.items() if isinstance(v, DType) and not k.startswith((\"default\", \"void\", \"weakint\", \"weakfloat\", \"index\", \"_\"))}\n+INVERSE_DTYPES_DICT = {**{v.name:k for k,v in DTYPES_DICT.items()}, \"void\": \"void\", \"weakint\":\"weakint\", \"weakfloat\":\"weakfloat\", \"index\":\"index\"}\n \n @functools.cache\n def can_lossless_cast(dt0:DType, dt1:DType) -> bool:\n"
+  },
+  "tinygrad__tinygrad-16551": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16551",
+    "model_patch": "diff --git a/tinygrad/mixin/rand.py b/tinygrad/mixin/rand.py\nindex c846830..8f4ae4b 100644\n--- a/tinygrad/mixin/rand.py\n+++ b/tinygrad/mixin/rand.py\n@@ -24,6 +24,7 @@ class RandMixin(OpMixin):\n       counts0 = cls.arange(ceildiv(chunk_num, 2), dtype=dtypes.uint32)\n       counts1 = counts0 + ceildiv(chunk_num, 2)\n       bits.append(cls._threefry_random_bits(new_key, counts0, counts1)[:chunk_num])\n+    if not bits: return counter[0:0]\n     return bits[0].cat(*bits[1:])\n \n   @staticmethod\n@@ -33,3 +34,10 @@ class RandMixin(OpMixin):\n     uint_bits = bits.bitcast(uint_dtype)\n     float_one_bits = uint_bits.const_like(1).cast(dtype).bitcast(uint_dtype)\n     return uint_bits.rshift(dtype.bitsize - nmant).bitwise_or(float_one_bits).bitcast(dtype)[:prod(shape)].sub(1).reshape(shape)\n+\n+  @classmethod\n+  def _rand(cls, key:Self, counter:Self, shape:tuple[int, ...], dtype:DType, contiguous:bool=True) -> Self:\n+    num = ceildiv(prod(shape) * dtype.itemsize, 4)\n+    bits = cls.random_bits(key, counter, num)\n+    out = cls._bits_to_rand(bits, shape, dtype)\n+    return out.contiguous() if contiguous else out\ndiff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex 043eb12..4e359a0 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -554,11 +554,8 @@ class Tensor(RandMixin):\n \n     # if shape has 0, return zero tensor\n     if (numel := prod(shape)) == 0: return Tensor.zeros(shape, device=device, dtype=dt)\n-    num = ceildiv(numel * dt.itemsize, 4)\n-    key, counter = Tensor._next_counter(device, num)\n-    bits = Tensor.random_bits(key, counter, num)\n-    out = Tensor._bits_to_rand(bits, shape, dt)\n-    return out.contiguous() if contiguous else out\n+    key, counter = Tensor._next_counter(device, ceildiv(numel * dt.itemsize, 4))\n+    return Tensor._rand(key, counter, shape, dt, contiguous=contiguous)\n \n   # ***** creation helper functions *****\n \n"
+  },
+  "tinygrad__tinygrad-16925": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16925",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16831": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16831",
+    "model_patch": "diff --git a/tinygrad/schedule/__init__.py b/tinygrad/schedule/__init__.py\nindex 4a1de70..76c3570 100644\n--- a/tinygrad/schedule/__init__.py\n+++ b/tinygrad/schedule/__init__.py\n@@ -44,7 +44,7 @@ def create_schedule(sched_sink:UOp) -> UOp:\n         if k.op is Ops.END: assert k.src[0].op is Ops.CALL, f\"END src[0] should be KERNEL, not {k.src[0].op}\"\n         kernel_deps = k.src[0].src[1:] if k.op is Ops.END else k.src[1:]\n         # TODO: MSELECT/MSTACK reads never get WAR deps\n-        reads += [(u, k, s) for s in map(_unwrap_src, kernel_deps) if s.op in {Ops.AFTER, Ops.BUFFER, Ops.PARAM}]\n+        reads += [(u, k, st) for s in kernel_deps for st in _states(s)]\n         # RAW deps: a kernel runs after the kernels that produced the states it reads or joins\n         for st in [st for s in kernel_deps + after_deps for st in _states(s)]:\n           if st.op is Ops.AFTER:\n"
+  },
+  "tinygrad__tinygrad-16896": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16896",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16363": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16363",
+    "model_patch": "diff --git a/tinygrad/viz/cli.py b/tinygrad/viz/cli.py\nindex c1b6aea..e59356e 100755\n--- a/tinygrad/viz/cli.py\n+++ b/tinygrad/viz/cli.py\n@@ -88,6 +88,23 @@ def main(args) -> None:\n                             if c[\"name\"].startswith(\"SQTT\") for s in c[\"steps\"] if s[\"name\"].endswith((\"PMC\", \"PKTS\"))])\n   if args.list and not args.src: return print(\"\\n\".join(emit(fmt_colored(k)) for k in [\"ALL\"]+list(profile[\"layout\"])))\n \n+  # Handle --interval filtering\n+  if args.interval:\n+    start_name, end_name = args.interval\n+    markers = profile.get(\"markers\", [])\n+    start_marker = next((m for m in markers if m[\"name\"] == start_name), None)\n+    end_marker = next((m for m in markers if m[\"name\"] == end_name), None)\n+    if start_marker is None:\n+      raise RuntimeError(f'Marker \"{start_name}\" not found in profile')\n+    if end_marker is None:\n+      raise RuntimeError(f'Marker \"{end_name}\" not found in profile')\n+    ts_start, ts_end = start_marker[\"ts\"], end_marker[\"ts\"]\n+    if ts_start > ts_end:\n+      ts_start, ts_end = ts_end, ts_start\n+    for v in profile[\"layout\"].values():\n+      if isinstance(v, dict) and v.get(\"event_type\") == 0:\n+        v[\"events\"] = [e for e in v[\"events\"] if ts_start <= e[\"st\"] <= ts_end]\n+\n   # ** SQTT printer\n   data = None if not args.src else get(profile[\"layout\"], args.src[0])\n   if args.src and \"SQTT\" in args.src[0]:\n@@ -215,6 +232,7 @@ def get_arg_parser() -> argparse.ArgumentParser:\n   parser.add_argument(\"--rewrites-path\", type=str, metavar=\"PATH\", help=\"Optional path to rewrites.pkl (default: latest rewrites)\",\n                       default=temp(\"rewrites.pkl\", append_user=True))\n   parser.add_argument(\"--json\", action=\"store_true\", help=\"Emit profiler output as JSON\")\n+  parser.add_argument(\"--interval\", nargs=2, metavar=(\"START\", \"END\"), help=\"Filter events between two markers\")\n   return parser\n \n if __name__ == \"__main__\":\n"
+  },
+  "tinygrad__tinygrad-16602": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16602",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16865": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16865",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16132": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16132",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16854": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16854",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16588": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16588",
+    "model_patch": "diff --git a/tinygrad/engine/jit.py b/tinygrad/engine/jit.py\nindex b35c4c3..95a192c 100644\n--- a/tinygrad/engine/jit.py\n+++ b/tinygrad/engine/jit.py\n@@ -296,7 +296,20 @@ class TinyJit(Generic[ReturnType]):\n         if DEBUG >= 1: print(f\"pruned from {len(big_linear.src) + len(onetime_linear.src)} -> {len(big_linear.src)} kernels\")\n         run_linear(onetime_linear, var_vals)\n \n+      # Collect buffers from all parameters of input arguments and their gradients.\n+      # This ensures buffers referenced by live tensors (e.g. gradients on model\n+      # parameters) are not recycled by the memory planner during JIT replay.\n+      input_params = set()\n+      for a in args:\n+        for p in get_parameters(a):\n+          input_params.add(p)\n+          if p.grad is not None: input_params.add(p.grad)\n+      for v in kwargs.values():\n+        for p in get_parameters(v):\n+          input_params.add(p)\n+          if p.grad is not None: input_params.add(p.grad)\n       held_bufs = set(buffers) | {t.uop.buf_uop for t in get_parameters(ret) if t.uop.buf_uop.op is Ops.BUFFER}\n+      held_bufs.update(t.uop.buf_uop for t in input_params if t.uop.buf_uop.op is Ops.BUFFER)\n       linear = jit_lower(big_linear, held_bufs, input_buf_uops)\n       self.captured = CapturedJit(ret, linear, names, expected_input_info)\n       ret = self.captured(input_buf_uops, var_vals)\n"
+  },
+  "tinygrad__tinygrad-16821": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16821",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16325": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16325",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15967": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15967",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16489": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16489",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16423": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16423",
+    "model_patch": "diff --git a/tinygrad/renderer/cstyle.py b/tinygrad/renderer/cstyle.py\nindex f50623d..3ac9cb6 100644\n--- a/tinygrad/renderer/cstyle.py\n+++ b/tinygrad/renderer/cstyle.py\n@@ -214,7 +214,7 @@ class CStyleLanguage(Renderer):\n     return (name, kernel, list(bufs.values()))\n   def render(self, uops:list[UOp]) -> str: return self.render_kernel(*self._render(uops), uops)\n \n-class ClangRenderer(CStyleLanguage):\n+class BaseClangRenderer(CStyleLanguage):\n   float4 = \"(float4)\"\n   float4_style = ('{', '}')\n   gep_arr_threshold = 0\n@@ -275,12 +275,12 @@ class ClangRenderer(CStyleLanguage):\n   def supported_dtypes(self):\n     return {d for d in super().supported_dtypes() if (d != dtypes.bfloat16 or self.target.arch.startswith((\"x86\", \"arm\"))) and d not in dtypes.fp8s}\n \n-class ClangJITRenderer(ClangRenderer):\n+class ClangRenderer(BaseClangRenderer):\n   def __init__(self, target:Target):\n     super().__init__(target)\n-    from tinygrad.runtime.support.compiler_cpu import ClangJITCompiler\n+    from tinygrad.runtime.support.compiler_cpu import ClangCompiler\n     if \"AMX\" in target.arch: self.tensor_cores = tc.amx\n-    self.compiler = ClangJITCompiler([x for x in target.arch.split(\",\") if x != \"AMX\"])\n+    self.compiler = ClangCompiler([x for x in target.arch.split(\",\") if x != \"AMX\"])\n \n class OpenCLRenderer(CStyleLanguage):\n   has_aux = True\ndiff --git a/tinygrad/runtime/ops_cpu.py b/tinygrad/runtime/ops_cpu.py\nindex ca4e442..37c59c9 100644\n--- a/tinygrad/runtime/ops_cpu.py\n+++ b/tinygrad/runtime/ops_cpu.py\n@@ -4,7 +4,7 @@ from tinygrad.helpers import to_mv, OSX, WIN, mv_address, suppress_finalizing, u\n from tinygrad.device import BufferSpec\n from tinygrad.runtime.support.hcq import HCQCompiled, HCQAllocator, HCQBuffer, HWQueue, HCQArgsState, HCQSignal, HCQProgram, MMIOInterface\n from tinygrad.runtime.support.hcq import CLikeArgsState\n-from tinygrad.renderer.cstyle import ClangJITRenderer\n+from tinygrad.renderer.cstyle import ClangRenderer\n from tinygrad.renderer.llvmir import CPULLVMRenderer\n from tinygrad.renderer.nir import LVPRenderer\n from tinygrad.renderer.isa.x86 import X86Renderer\n@@ -138,5 +138,5 @@ class CPUDevice(HCQCompiled):\n   def __init__(self, device:str=\"\"):\n     self.tasks:queue.Queue = queue.Queue()\n     CPUWorker(self, self.tasks, thread_id=0).start()\n-    super().__init__(device, CPUAllocator(self), [ClangJITRenderer, CPULLVMRenderer, LVPRenderer, X86Renderer], functools.partial(CPUProgram, self),\n+    super().__init__(device, CPUAllocator(self), [ClangRenderer, CPULLVMRenderer, LVPRenderer, X86Renderer], functools.partial(CPUProgram, self),\n                      CPUSignal, CPUComputeQueue, arch={'amd64':'x86_64', 'aarch64':'arm64'}.get(m:=platform.machine().lower(), m)+\",native\")\ndiff --git a/tinygrad/runtime/ops_dsp.py b/tinygrad/runtime/ops_dsp.py\nindex 8bcfcb5..275d739 100644\n--- a/tinygrad/runtime/ops_dsp.py\n+++ b/tinygrad/runtime/ops_dsp.py\n@@ -5,7 +5,7 @@ from tinygrad.device import BufferSpec, Compiled, Allocator, Compiler\n from tinygrad.dtype import dtypes, DType, PtrDType\n from tinygrad.uop.ops import Ops, UOp\n from tinygrad.helpers import getenv, round_up, mv_address, to_mv, cpu_objdump, system, DEBUG, suppress_finalizing, Target\n-from tinygrad.renderer.cstyle import ClangRenderer\n+from tinygrad.renderer.cstyle import BaseClangRenderer\n from tinygrad.runtime.autogen import libc, qcom_dsp\n if getenv(\"IOCTL\"): import extra.dsp.run # noqa: F401 # pylint: disable=unused-import\n \n@@ -32,17 +32,17 @@ dsp_string = PatternMatcher([\n   (UPat(Ops.CONST, (dtypes.int8, dtypes.uint8), name=\"x\"), lambda ctx,x: str(x.arg)),\n ])\n \n-class DSPRenderer(ClangRenderer):\n+class DSPRenderer(BaseClangRenderer):\n   supports_float4 = True\n   has_threads = False\n   buffer_suffix = \" restrict __attribute__((align_value(128)))\"\n   kernel_typedef = \"__attribute__((noinline)) void\"\n   extra_args = []\n   pre_matcher = dsp_pm\n-  extra_matcher = dsp_pm_late+ClangRenderer.extra_matcher\n-  string_rewrite = dsp_string+ClangRenderer.string_rewrite\n-  type_map = { **ClangRenderer.type_map, dtypes.uint64: \"unsigned long long\", dtypes.int64: \"long long\" }\n-  code_for_op = {k:v for k,v in ClangRenderer.code_for_op.items() if k != Ops.SQRT}\n+  extra_matcher = dsp_pm_late+BaseClangRenderer.extra_matcher\n+  string_rewrite = dsp_string+BaseClangRenderer.string_rewrite\n+  type_map = { **BaseClangRenderer.type_map, dtypes.uint64: \"unsigned long long\", dtypes.int64: \"long long\" }\n+  code_for_op = {k:v for k,v in BaseClangRenderer.code_for_op.items() if k != Ops.SQRT}\n \n   def __init__(self, target:Target): self.target, self.compiler = target, DSPCompiler()\n \n@@ -272,7 +272,7 @@ return (void*)syscall((long)addr, length, prot, flags, fd, offset, 222); }}'''\n \n class MockDSPRenderer(DSPRenderer):\n   def __init__(self, target:Target): self.target, self.compiler = target, DSPCompiler(mock=True)\n-  def _render_defines(self, uops) -> list[str]: return ClangRenderer._render_defines(self, uops)\n+  def _render_defines(self, uops) -> list[str]: return BaseClangRenderer._render_defines(self, uops)\n   def _render_entry(self, function_name:str, bufs:list[tuple[str,tuple[DType,bool]]]) -> str:\n     # https://gpages.juszkiewicz.com.pl/syscalls-table/syscalls.html\n     # control register 21 is HEX_REG_QEMU_INSN_CNT, 0x6a15c000 loads it\ndiff --git a/tinygrad/runtime/support/compiler_cpu.py b/tinygrad/runtime/support/compiler_cpu.py\nindex 5b6121e..2fc5ede 100644\n--- a/tinygrad/runtime/support/compiler_cpu.py\n+++ b/tinygrad/runtime/support/compiler_cpu.py\n@@ -4,7 +4,7 @@ from tinygrad.helpers import getenv, capstone_flatdump, DEBUG, unwrap\n from tinygrad.runtime.support.elf import jit_loader\n from tinygrad.runtime.autogen import llvm\n \n-class ClangJITCompiler(Compiler):\n+class ClangCompiler(Compiler):\n   def __init__(self, arch:list[str], cachekey=\"compile_clang_jit\"):\n     assert len(arch) >= 2, f\"invalid arch string: {','.join(arch)!r}, expected '<arch>,<cpu>,[<feats>]' (eg. 'x86_64,znver2')\"\n     self.arch, cpu, *feats = arch\n@@ -98,7 +98,7 @@ class CPULLVMCompiler(LLVMCompiler):\n     if cpu == \"native\":\n       cpu = ctypes.string_at(llvm.LLVMGetHostCPUName()).decode()\n       featstr = (featstr + \",\" if featstr else \"\") + ctypes.string_at(llvm.LLVMGetHostCPUFeatures()).decode()\n-    # +reserve-x18 here does the same thing as -ffixed-x18 in ClangJITCompiler, see comments there for why it's needed on arm osx\n+    # +reserve-x18 here does the same thing as -ffixed-x18 in ClangCompiler, see comments there for why it's needed on arm osx\n     super().__init__(self.arch, cpu, ('+reserve-x18,' if self.arch == \"arm64\" else '') + featstr, cache_key)\n \n   def disassemble(self, lib:bytes): capstone_flatdump(lib, self.arch)\n"
+  },
+  "tinygrad__tinygrad-16823": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16823",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15948": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15948",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15720": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15720",
+    "model_patch": "diff --git a/tinygrad/apps/llm.py b/tinygrad/apps/llm.py\nindex fb8a325..0851aee 100644\n--- a/tinygrad/apps/llm.py\n+++ b/tinygrad/apps/llm.py\n@@ -9,7 +9,7 @@ from tinygrad.viz.serve import TCPServerWithReuse, HTTPRequestHandler\n class SimpleTokenizer:\n   def __init__(self, normal_tokens:dict[str, int], special_tokens:dict[str, int], preset:str=\"llama3\"):\n     preset = {\"qwen35\":\"qwen2\",\"qwen35moe\":\"qwen2\"}.get(preset, preset)\n-    if preset not in (\"llama3\",\"llama-v3\",\"llama-bpe\",\"qwen2\",\"olmo\",\"kimi-k2\"): raise ValueError(f\"Invalid tokenizer preset '{preset}'\")\n+    if preset not in (\"llama3\",\"llama-v3\",\"llama-bpe\",\"qwen2\",\"olmo\",\"kimi-k2\",\"tekken\"): raise ValueError(f\"Invalid tokenizer preset '{preset}'\")\n     # https://github.com/openai/gpt-2/blob/9b63575ef42771a015060c964af2c3da4cf7c8ab/src/encoder.py#L9\n     bs = [*range(33, 127), *range(161, 173), *range(174, 256)]  # bytes that map to themselves\n     self._byte_decoder = {chr(b): b for b in bs} | {chr(256+i): b for i,b in enumerate(b for b in range(256) if b not in bs)}\n@@ -63,11 +63,16 @@ class SimpleTokenizer:\n     if self.preset == 'olmo': return self.encode(\"<|\" + role + \"|>\\n\")  # OLMoE Instruct format\n     if self.preset == 'kimi-k2': return self.encode(\"<|im_\" + role + \"|>\" + role + \"<|im_middle|>\")\n     if self.preset == 'qwen2': return self.encode(\"<|im_start|>\" + role + \"\\n\")\n+    if self.preset == 'tekken':\n+      if role == 'user': return self.encode('[INST]')\n+      if role == 'assistant': return []\n+      raise ValueError(f\"Invalid role '{role}' for tekken preset\")\n     return self.encode(\"<|start_header_id|>\" + role + \"<|end_header_id|>\\n\\n\")\n   def end_turn(self, eos_id:int):\n     if self.preset == 'olmo': return self.encode(\"\\n\")\n     if self.preset == 'kimi-k2': return [eos_id]\n     if self.preset == 'qwen2': return [eos_id] + self.encode(\"\\n\")\n+    if self.preset == 'tekken': return self.encode('[/INST]')\n     return [eos_id]\n \n @functools.cache\n"
+  },
+  "tinygrad__tinygrad-15931": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15931",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15915": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15915",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16971": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16971",
+    "model_patch": "diff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex 958ba23..e51534f 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -69,9 +69,9 @@ class Tensor(RandMixin):\n \n     # create a UOp from the different types of inputs\n     if isinstance(data, UOp):\n-      assert _dtype is None or _dtype==data.dtype or data.dtype==dtypes.index, f\"dtype mismatch: {_dtype} vs {data.dtype}\"\n       # if data is dtype.index that means that this is a symbolic int and we need to lower it to something we can make a Tensor out of\n       if data.dtype == dtypes.index: data = _index_to_concrete_int(data)\n+      if _dtype is not None and _dtype != data.dtype: data = data.cast(_dtype)\n     elif data is None:\n       data = UOp.const(_dtype or dtypes.default_float, 0)\n     elif isinstance(data, get_args(ConstType)):\ndiff --git a/tinygrad/uop/ops.py b/tinygrad/uop/ops.py\nindex 4927628..87534fc 100644\n--- a/tinygrad/uop/ops.py\n+++ b/tinygrad/uop/ops.py\n@@ -1154,7 +1154,11 @@ class ProgramInfo:\n     local_size = tuple([sym_infer(sz, var_vals) for sz in self.local_size]) if self.local_size is not None else None\n     return global_size, local_size\n \n-  def vals(self, var_vals:dict[str, int]): return tuple(var_vals[k.expr] if k.expr not in self.runtimevars else None for k in self.vars)\n+  def vals(self, var_vals:dict[str, int]):\n+    for k in self.vars:\n+      if k.expr not in var_vals and k.expr not in self.runtimevars:\n+        raise RuntimeError(f\"unbound Variable '{k.expr}' used in program\")\n+    return tuple(var_vals[k.expr] if k.expr not in self.runtimevars else None for k in self.vars)\n \n   @staticmethod\n   def from_sink(sink:UOp, aux:tuple=()) -> ProgramInfo:\n"
+  },
+  "tinygrad__tinygrad-16754": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16754",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16970": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16970",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16811": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16811",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16162": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16162",
+    "model_patch": "diff --git a/tinygrad/mixin/elementwise.py b/tinygrad/mixin/elementwise.py\nindex b530c9a..9009ef3 100644\n--- a/tinygrad/mixin/elementwise.py\n+++ b/tinygrad/mixin/elementwise.py\n@@ -750,7 +750,7 @@ class ElementwiseMixin(DTypeMixin, CreationMixin):\n     \"\"\"\n     return self * (self * 1.702).sigmoid()\n \n-  def gelu(self) -> Self:\n+  def gelu(self, approximate: str = 'tanh') -> Self:\n     \"\"\"\n     Applies the Gaussian Error Linear Unit (GELU) function element-wise.\n \n@@ -760,7 +760,12 @@ class ElementwiseMixin(DTypeMixin, CreationMixin):\n     print(Tensor([-3., -2., -1., 0., 1., 2., 3.]).gelu().numpy())\n     ```\n     \"\"\"\n-    return 0.5 * self * (1 + (math.sqrt(2 / math.pi) * (self + 0.044715 * self ** 3)).tanh())\n+    if approximate == 'tanh':\n+      return 0.5 * self * (1 + (math.sqrt(2 / math.pi) * (self + 0.044715 * self ** 3)).tanh())\n+    elif approximate == 'none':\n+      return 0.5 * self * (1 + (self / math.sqrt(2)).erf())\n+    else:\n+      raise RuntimeError(f'approximate argument must be either \"none\" or \"tanh\", but got \"{approximate}\"')\n \n   def swish(self) -> Self:\n     \"\"\"\n"
+  },
+  "tinygrad__tinygrad-16792": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16792",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16797": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16797",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16646": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16646",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16276": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16276",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16719": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16719",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16101": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16101",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16048": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16048",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16548": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16548",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16058": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16058",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16532": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16532",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16277": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16277",
+    "model_patch": "diff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex bbcdca2..0f6c708 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -92,7 +92,7 @@ class Tensor(OpMixin):\n   training: ClassVar[bool] = False\n \n   def __init__(self, data:ConstType|bytes|list|tuple|UOp|'numpy.ndarray'|pathlib.Path|None,\n-               device:str|tuple|list|None=None, dtype:DTypeLike|None=None, requires_grad:bool=True, _force_unique:bool=False):\n+               device:str|tuple|list|None=None, dtype:DTypeLike|None=None, requires_grad:bool=True):\n     if device is None:\n       if isinstance(data, pathlib.Path): device = f\"DISK:{data.resolve()}\"  # keep it on the disk if device is None\n       elif isinstance(data, UOp): device = data.device\n@@ -114,7 +114,7 @@ class Tensor(OpMixin):\n       data = UOp.const(_dtype or dtypes.default_float, 0, _device)\n     elif isinstance(data, get_args(ConstType)):\n       dt = _dtype or dtypes.from_py(data)\n-      data = UOp.unique_const(data, dt, _device) if _force_unique or (requires_grad and dtypes.is_float(dt)) else UOp.const(dt, data, _device)\n+      data = UOp.const(dt, data, _device)\n     elif isinstance(data, bytes): data = _frompy(data, _dtype or dtypes.uint8, _device)\n     elif isinstance(data, (list, tuple)):\n       if _dtype is None:\n@@ -161,11 +161,17 @@ class Tensor(OpMixin):\n   def alu(self, op: Ops, *src: Tensor) -> Tensor: return self._apply_uop(lambda *u: u[0].alu(op, *u[1:]), *src)\n   def const_like(self, b:ConstType) -> Tensor: return Tensor(self.uop.const_like(b), requires_grad=False)\n   @staticmethod\n-  def unique_const(fill_value:ConstType|UOp, **kwargs) -> Tensor: return Tensor(fill_value, _force_unique=True, **kwargs)\n+  def unique_const(fill_value:ConstType|UOp, **kwargs) -> Tensor:\n+    if isinstance(fill_value, get_args(ConstType)):\n+      uop = UOp.unique_const(fill_value, dtype=kwargs.get('dtype'), device=kwargs.get('device'))\n+      filtered_kwargs = {k:v for k,v in kwargs.items() if k not in ('dtype','device')}\n+      return Tensor(uop, **filtered_kwargs)\n+    return Tensor(fill_value, **kwargs)\n \n   def requires_grad_(self, requires_grad:bool=True) -> Tensor:\n-    # make the UOp unique if it's a CONST to prevent gradient accumulation bugs with cached const UOps\n-    if requires_grad and self.uop.op is Ops.CONST: self.replace(Tensor(self.uop.arg, device=self.device, dtype=self.dtype, requires_grad=True))\n+    # make a new, independent UOp if it's a CONST to prevent gradient accumulation bugs with cached const UOps\n+    if requires_grad and self.uop.op is Ops.CONST:\n+      self.uop = UOp.const(self.uop.dtype, self.uop.arg, self.uop.device)\n     self.requires_grad = requires_grad\n     return self\n \n@@ -861,7 +867,7 @@ class Tensor(OpMixin):\n     all_uops = self.uop.toposort()\n     # backward fills .grad for every in-scope float tensor; .detach() only blocks gradient flow to the source\n     tensors_need_grad: list[Tensor] = [t for tref in all_tensors if (t:=tref()) is not None and \\\n-                                       t.uop in all_uops and t.is_floating_point()]\n+                                       t.uop in all_uops and t.is_floating_point() and t.uop.op is not Ops.CONST]\n     # clear contexts\n     for t,g in zip(tensors_need_grad, self.gradient(*tensors_need_grad, gradient=gradient)):\n       assert g.shape == t.shape, f\"grad shape must match tensor shape, {g.shape!r} != {t.shape!r}\"\n"
+  },
+  "tinygrad__tinygrad-16078": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16078",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15759": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15759",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16212": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16212",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15784": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15784",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16526": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16526",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16611": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16611",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16695": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16695",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16827": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16827",
+    "model_patch": "diff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex 20539f1..9418ece 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -16,7 +16,7 @@ from tinygrad.callify import transform_to_call\n # *** all in scope Tensors are here. this gets relevant UOps ***\n \n all_tensors: dict[weakref.ref[Tensor], None] = {}\n-def _apply_map_to_tensors(applied_map:dict[UOp, UOp], name:str, walk:bool=False) -> None:\n+def _apply_map_to_tensors(applied_map:dict[UOp, UOp], name:str) -> None:\n   with cpu_profile(TracingKey(name), \"TINY\"):\n     # get tensors in scope\n     in_scope: dict[UOp, bool] = {}\n@@ -25,7 +25,7 @@ def _apply_map_to_tensors(applied_map:dict[UOp, UOp], name:str, walk:bool=False)\n \n     # get all Tensors and apply the map\n     sink = UOp.sink(*[t.uop for t in scope_tensors])\n-    new_sink = sink.substitute(applied_map, name=f\"substitute {name}\", walk=walk)\n+    new_sink = sink.substitute(applied_map, name=f\"substitute {name}\", walk=True)\n \n     # set the relevant uop to the realized UOps\n     for t,s,ns in zip(scope_tensors, sink.src, new_sink.src):\n@@ -226,7 +226,7 @@ class Tensor(RandMixin):\n       ib = self.uop\n       while not ib.has_buffer_identity() and ib is not base: ib = ib.src[0]\n       assigned_ib = ib.after(assign)\n-      _apply_map_to_tensors({ib: assigned_ib}, name=\"Embed View Assign\", walk=True)\n+      _apply_map_to_tensors({ib: assigned_ib}, name=\"Embed View Assign\")\n     else:\n       # simple assign\n       self.uop = assign\n"
+  },
+  "tinygrad__tinygrad-16759": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16759",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16414": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16414",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16164": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16164",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16643": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16643",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16243": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16243",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16639": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16639",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16124": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16124",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16026": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16026",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16582": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16582",
+    "model_patch": "diff --git a/tinygrad/uop/ops.py b/tinygrad/uop/ops.py\nindex 8d65b1a..e936ea3 100644\n--- a/tinygrad/uop/ops.py\n+++ b/tinygrad/uop/ops.py\n@@ -504,12 +504,15 @@ class UOp(RandMixin, metaclass=UOpMetaClass):\n     assert self.dtype.vcount == 1\n     if count == 1: return self\n     return UOp(Ops.STACK, self.dtype.vec(count), (self,)*count)\n-  def cast(self, dtype:DType):\n+  def cast(self, dtype:DTypeLike):\n+    dtype = to_dtype(dtype)\n     # TODO: we shouldn't have to check for dtype.count == 1 here, but CAST is misused in AMD LLVM\n     if dtype.count == 1 and dtype.count != self.dtype.count: dtype = dtype.vec(self.dtype.count)\n     if self.dtype == dtype: return self\n     return UOp(Ops.CAST, dtype, (self,))\n-  def bitcast(self, dtype:DType): return self if self.dtype == dtype else UOp(Ops.BITCAST, dtype, (self,))\n+  def bitcast(self, dtype:DTypeLike):\n+    dtype = to_dtype(dtype)\n+    return self if self.dtype == dtype else UOp(Ops.BITCAST, dtype, (self,))\n   def gep(self, i:tuple[int, ...]|int):\n     if isinstance(i, tuple) and len(i) == 1: return self.gep(i[0])\n     if isinstance(i, int):\n"
+  },
+  "tinygrad__tinygrad-16696": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16696",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15942": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15942",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16432": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16432",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16175": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16175",
+    "model_patch": "diff --git a/tinygrad/mixin/__init__.py b/tinygrad/mixin/__init__.py\nindex 0e2d1ba..8f04a76 100644\n--- a/tinygrad/mixin/__init__.py\n+++ b/tinygrad/mixin/__init__.py\n@@ -1476,6 +1476,63 @@ class OpMixin(ElementwiseMixin, ReduceMixin):\n                                                  for i,p in enumerate(params)))\n     return G\n \n+  def svd(self, full_matrices = True) -> tuple[Self, Self, Self]:\n+    #partial implementation of https://www.netlib.org/lapack/lawnspdf/lawn169.pdf , pg 26\n+    assert self.ndim > 1, f\"expected two or more dimensions, got {self.ndim}\"\n+    b_shape, m, n = self.shape[:-2], int(self.shape[-2]), int(self.shape[-1])\n+    #preprocess the matrix\n+    Q, R = (self if m >= n else self.transpose(-2, -1)).qr()\n+    num, q_num = min(m, n), max(m, n)\n+    # TODO: codegen infinite loop without contiguous\n+    U = R[..., :num, :num].contiguous()\n+    V = type(self).eye(num, dtype=self.dtype, device=self.device).expand(b_shape + (num, num)).contiguous()\n+    #prepare round robin pairing: identity on first half, reversed on second half\n+    permute = type(self).arange(num//2, dtype=dtypes.int, device=self.device).cat(\n+                type(self).arange(num//2, num, dtype=dtypes.int, device=self.device).flip(0))\n+    cols = type(self).arange(num, dtype=dtypes.int, device=self.device)\n+    def one_round_jacobi(U, V, permute):\n+      # permutation matrix P such that X @ P == X[..., permute]; X @ P.T applies the inverse permutation\n+      P = cols.unsqueeze(1).eq(permute.unsqueeze(0)).cast(U.dtype)\n+      #pair all the columns\n+      U_perm, V_perm = U @ P, V @ P\n+      U_permuted, runoff_U = U_perm.split(num - 1, -1) if num % 2 == 1 else (U_perm, None)\n+      V_permuted, runoff_V = V_perm.split(num - 1, -1) if num % 2 == 1 else (V_perm, None)\n+      U_left, U_right = U_permuted.split(num//2, -1)\n+      V_left, V_right = V_permuted.split(num//2, -1)\n+      #compute the jacobi rotations for each pairing\n+      gamma = (U_left * U_right).sum(-2).reshape(b_shape + (1, num//2))\n+      alpha, beta = U_permuted.square().sum(-2).unsqueeze(-2).split(num//2, -1)\n+      rot = gamma != 0\n+      tau = (beta - alpha) / (2 * rot.where(gamma, 1))\n+      t = (tau != 0).where(tau.sign(), 1) / (tau.abs() + (1 + tau.square()).sqrt())\n+      t = rot.where(t, 0)\n+      c = 1 / (1 + t.square()).sqrt()\n+      s = c * t\n+      #apply the rotations and unpermute via P.T\n+      U_left, U_right = c * U_left - s * U_right, s * U_left + c * U_right\n+      U = U_left.cat(U_right.cat(runoff_U, dim=-1) if num % 2 == 1 else U_right, dim=-1) @ P.transpose(-2, -1)\n+      V_left, V_right = c * V_left - s * V_right, s * V_left + c * V_right\n+      V = V_left.cat(V_right.cat(runoff_V, dim=-1) if num % 2 == 1 else V_right, dim=-1) @ P.transpose(-2, -1)\n+      #prepare the next round robin pairings\n+      if num % 2 == 1: permute = (permute - 1) % num\n+      else: permute = permute[0].reshape(1).cat(((permute[1:num] - 2) % (num - 1)) + 1)\n+      return U, V, permute\n+    # classical Jacobi converges in ~4 sweeps; one full sweep is (num-1) rounds for even num\n+    for _ in range(4 * num): U, V, permute = one_round_jacobi(U, V, permute)\n+    #extract singular values and sort. construct U from Q\n+    S, indices = U.square().sum(-2).sqrt().sort(dim=-1, descending=True)\n+    new_indices = indices.unsqueeze(-2).expand(b_shape + (num, num))\n+    U = U.gather(-1, new_indices) / (S != 0).where(S, 1).unsqueeze(-2)\n+    V = V.gather(-1, new_indices)\n+    # place U into the top-left num\u00d7num block of a q_num\u00d7q_num identity matrix\n+    pad_arg = (None,) * len(b_shape) + ((0, q_num - num), (0, q_num - num))\n+    eye_q = type(self).eye(q_num, dtype=U.dtype, device=U.device).expand(b_shape + (q_num, q_num))\n+    eye_n = type(self).eye(num, dtype=U.dtype, device=U.device).expand(b_shape + (num, num)).pad(pad_arg)\n+    U = Q @ (U.pad(pad_arg) + eye_q - eye_n)\n+    if not full_matrices: U = U[..., 0:num]\n+    return (U, S, V.transpose(-2, -1)) if m >= n else (V, S, U.transpose(-2, -1))\n+\n+\n   # ***** tensor properties *****\n \n   def nbytes(self) -> int:\ndiff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex 43bcf9e..d080793 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -1408,62 +1408,6 @@ class Tensor(OpMixin):\n       qk = qk + attn_mask\n     return qk.cast(self.dtype).softmax(-1).dropout(dropout_p) @ value\n \n-  def svd(self, full_matrices = True) -> tuple[Tensor, Tensor, Tensor]:\n-    #partial implementation of https://www.netlib.org/lapack/lawnspdf/lawn169.pdf , pg 26\n-    assert self.ndim > 1, f\"expected two or more dimensions, got {self.ndim}\"\n-    b_shape, m, n = self.shape[:-2], int(self.shape[-2]), int(self.shape[-1])\n-    #preprocess the matrix\n-    Q, R = (self if m >= n else self.transpose(-2, -1)).qr()\n-    num, q_num = min(m, n), max(m, n)\n-    # TODO: codegen infinite loop without contiguous\n-    U = R[..., :num, :num].contiguous()\n-    V = Tensor.eye(num, dtype=self.dtype, device=self.device).expand(b_shape + (num, num)).contiguous()\n-    #prepare round robin pairing: identity on first half, reversed on second half\n-    permute = Tensor.arange(num//2, dtype=dtypes.int, device=self.device).cat(\n-                Tensor.arange(num//2, num, dtype=dtypes.int, device=self.device).flip(0))\n-    cols = Tensor.arange(num, dtype=dtypes.int, device=self.device)\n-    def one_round_jacobi(U, V, permute):\n-      # permutation matrix P such that X @ P == X[..., permute]; X @ P.T applies the inverse permutation\n-      P = cols.unsqueeze(1).eq(permute.unsqueeze(0)).cast(U.dtype)\n-      #pair all the columns\n-      U_perm, V_perm = U @ P, V @ P\n-      U_permuted, runoff_U = U_perm.split(num - 1, -1) if num % 2 == 1 else (U_perm, None)\n-      V_permuted, runoff_V = V_perm.split(num - 1, -1) if num % 2 == 1 else (V_perm, None)\n-      U_left, U_right = U_permuted.split(num//2, -1)\n-      V_left, V_right = V_permuted.split(num//2, -1)\n-      #compute the jacobi rotations for each pairing\n-      gamma = (U_left * U_right).sum(-2).reshape(b_shape + (1, num//2))\n-      alpha, beta = U_permuted.square().sum(-2).unsqueeze(-2).split(num//2, -1)\n-      rot = gamma != 0\n-      tau = (beta - alpha) / (2 * rot.where(gamma, 1))\n-      t = (tau != 0).where(tau.sign(), 1) / (tau.abs() + (1 + tau.square()).sqrt())\n-      t = rot.where(t, 0)\n-      c = 1 / (1 + t.square()).sqrt()\n-      s = c * t\n-      #apply the rotations and unpermute via P.T\n-      U_left, U_right = c * U_left - s * U_right, s * U_left + c * U_right\n-      U = U_left.cat(U_right.cat(runoff_U, dim=-1) if num % 2 == 1 else U_right, dim=-1) @ P.transpose(-2, -1)\n-      V_left, V_right = c * V_left - s * V_right, s * V_left + c * V_right\n-      V = V_left.cat(V_right.cat(runoff_V, dim=-1) if num % 2 == 1 else V_right, dim=-1) @ P.transpose(-2, -1)\n-      #prepare the next round robin pairings\n-      if num % 2 == 1: permute = (permute - 1) % num\n-      else: permute = permute[0].reshape(1).cat(((permute[1:num] - 2) % (num - 1)) + 1)\n-      return U, V, permute\n-    # classical Jacobi converges in ~4 sweeps; one full sweep is (num-1) rounds for even num\n-    for _ in range(4 * num): U, V, permute = one_round_jacobi(U, V, permute)\n-    #extract singular values and sort. construct U from Q\n-    S, indices = U.square().sum(-2).sqrt().sort(dim=-1, descending=True)\n-    new_indices = indices.unsqueeze(-2).expand(b_shape + (num, num))\n-    U = U.gather(-1, new_indices) / (S != 0).where(S, 1).unsqueeze(-2)\n-    V = V.gather(-1, new_indices)\n-    # place U into the top-left num\u00d7num block of a q_num\u00d7q_num identity matrix\n-    pad_arg = (None,) * len(b_shape) + ((0, q_num - num), (0, q_num - num))\n-    eye_q = Tensor.eye(q_num, dtype=U.dtype, device=U.device).expand(b_shape + (q_num, q_num))\n-    eye_n = Tensor.eye(num, dtype=U.dtype, device=U.device).expand(b_shape + (num, num)).pad(pad_arg)\n-    U = Q @ (U.pad(pad_arg) + eye_q - eye_n)\n-    if not full_matrices: U = U[..., 0:num]\n-    return (U, S, V.transpose(-2, -1)) if m >= n else (V, S, U.transpose(-2, -1))\n-\n   # ***** cast ops *****\n \n   def cast(self, dtype:DTypeLike) -> Tensor:\n"
+  },
+  "tinygrad__tinygrad-16364": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16364",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16149": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16149",
+    "model_patch": "diff --git a/tinygrad/mixin/__init__.py b/tinygrad/mixin/__init__.py\nindex f06c1d1..963a988 100644\n--- a/tinygrad/mixin/__init__.py\n+++ b/tinygrad/mixin/__init__.py\n@@ -923,7 +923,7 @@ class OpMixin(ElementwiseMixin, ReduceMixin):\n     ```\n     \"\"\"\n     if index.device != self.device: raise RuntimeError(f\"expected index and self on the same device, {index.device=}, {self.device=}\")\n-    assert index.ndim == self.ndim, f\"self.ndim must equal index.ndim, {self.ndim=}, {index.ndim=}\"\n+    if index.ndim != self.ndim: raise RuntimeError(f\"self.ndim must equal index.ndim, {self.ndim=}, {index.ndim=}\")\n     dim = self._resolve_dim(dim)\n     assert all(s >= i for d,(s,i) in enumerate(zip(self.shape, index.shape)) if d != dim), \"requires self.shape[d] >= index.shape[d] for all d != dim\"\n     x = self.shrink_to(tuple(i if d != dim else None for d,i in enumerate(index.shape))).unsqueeze(-1).transpose(-1, dim)\n"
+  },
+  "tinygrad__tinygrad-16647": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16647",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16599": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16599",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16663": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16663",
+    "model_patch": "diff --git a/tinygrad/function.py b/tinygrad/function.py\nindex 2f4b868..7dace96 100644\n--- a/tinygrad/function.py\n+++ b/tinygrad/function.py\n@@ -46,8 +46,10 @@ class _function(Generic[ReturnType]):\n     # run it and do surgery later\n     with Context(ALLOW_DEVICE_USAGE=getenv(\"DEVICE_IN_FUNCTION_BUG\", 0)):\n       _function.depth += 1\n-      ret = self.fxn(*args, **kwargs)\n-      _function.depth -= 1\n+      try:\n+        ret = self.fxn(*args, **kwargs)\n+      finally:\n+        _function.depth -= 1\n     if isinstance(ret, Tensor):\n       uret = ret.uop\n     elif isinstance(ret, tuple) and all(isinstance(x, Tensor) for x in ret):\n"
+  },
+  "tinygrad__tinygrad-15937": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15937",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16608": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16608",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16031": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16031",
+    "model_patch": "diff --git a/tinygrad/viz/cli.py b/tinygrad/viz/cli.py\nindex 27f134b..a04f94f 100755\n--- a/tinygrad/viz/cli.py\n+++ b/tinygrad/viz/cli.py\n@@ -138,21 +138,27 @@ def main(args) -> None:\n     timelines = [(n,l) for n,l in profile[\"layout\"].items() if isinstance(l, dict) and l.get(\"event_type\") == 0]\n     def produce_top_kernels() -> Iterator[dict]:\n       tagged = ((n,e) for n,l in timelines for e in l[\"events\"]) if args.src == \"ALL\" else ((args.src,e) for e in unwrap(data)[\"events\"])\n-      agg:dict[tuple[str,str], tuple[float, int, int|None]] = {} # map (device, kernel name) to (total time, count and ref)\n+      # map (device, kernel name) to (total time, count, ref, weighted_sum_flops, weighted_sum_mem, weighted_sum_lds)\n+      agg:dict[tuple[str,str], tuple[float, int, int|None, float, float, float]] = {}\n       total = 0\n       for dev,e in tagged:\n         et = e[\"dur\"] * 1e-3\n-        t, c, ref = agg.get((dev,e[\"name\"]), (0.0, 0, None))\n-        agg[(dev,e[\"name\"])] = (t+et, c+1, e[\"ref\"])\n+        t, c, ref, sf, sm, sl = agg.get((dev,e[\"name\"]), (0.0, 0, None, 0.0, 0.0, 0.0))\n+        fmt = e.get(\"fmt\", {})\n+        agg[(dev,e[\"name\"])] = (t+et, c+1, e[\"ref\"],\n+                                sf + fmt.get(\"FLOPS\", 0) * et,\n+                                sm + fmt.get(\"B/s mem\", 0) * et,\n+                                sl + fmt.get(\"B/s lds\", 0) * et)\n         total += et\n       items = sorted(agg.items(), key=lambda kv:kv[1][0], reverse=True)\n       num_rows = len(items) if args.top < 0 else args.top\n-      for (dev,name),(t,c,ref) in items[:num_rows]:\n+      for (dev,name),(t,c,ref,sf,sm,sl) in items[:num_rows]:\n         display = f\"{dev[:7]:7s} {fmt_colored(name)}\" if args.src == \"ALL\" else fmt_colored(name)\n-        yield {\"name\":display, \"dur_ms\":t, \"count\":c, \"pct\":t/total*100.0, \"ref\":ref}\n+        yield {\"name\":display, \"dur_ms\":t, \"count\":c, \"pct\":t/total*100.0, \"ref\":ref,\n+               \"FLOPS\": sf/t if t>0 else 0, \"B/s mem\": sm/t if t>0 else 0, \"B/s lds\": sl/t if t>0 else 0}\n       if num_rows > 0 and items[num_rows:]:\n-        other_t = sum(t for _,(t,_,_) in items[num_rows:])\n-        other_c = sum(c for _,(_,c,_) in items[num_rows:])\n+        other_t = sum(t for _,(t,_,_,_,_,_) in items[num_rows:])\n+        other_c = sum(c for _,(_,c,_,_,_,_) in items[num_rows:])\n         yield {\"name\":\"Other\", \"dur_ms\":other_t, \"count\":other_c, \"pct\":other_t/total*100.0, \"ref\":None}\n     def produce_all_kernels() -> Iterator[dict]:\n       event_streams = [[(e[\"st\"], n, e) for e in l[\"events\"]] for n,l in timelines] if args.src == \"ALL\" \\\n@@ -175,7 +181,13 @@ def main(args) -> None:\n         yield {\"device\":dev, \"name\":fmt_colored(e[\"name\"]), \"dur_ms\":e[\"dur\"]*1e-3,\n                \"st_ms\":e[\"st\"]*1e-3, \"fmt\":fmt, \"ref\":e[\"ref\"], \"ext\":\"\\n\".join(ext)}\n     def fmt_top(k:dict) -> str:\n-      return f\"{fmt_colored(k['name'])}{' ' * max(0, 36-ansilen(k['name']))} {time_to_str(k['dur_ms']*1e-3, w=9)} {k['count']:7d} {k['pct']:6.2f}%\"\n+      extra = []\n+      if \"FLOPS\" in k: extra.append(to_str(\"FLOPS\", k[\"FLOPS\"]))\n+      if \"B/s mem\" in k: extra.append(to_str(\"B/s mem\", k[\"B/s mem\"]))\n+      if \"B/s lds\" in k: extra.append(to_str(\"B/s lds\", k[\"B/s lds\"]))\n+      line = f\"{fmt_colored(k['name'])}{' ' * max(0, 36-ansilen(k['name']))} {time_to_str(k['dur_ms']*1e-3, w=9)} {k['count']:7d} {k['pct']:6.2f}%\"\n+      if extra: line += \"  \" + \"  \".join(extra)\n+      return line\n     def fmt_all(k:dict) -> str:\n       if k[\"device\"] in {\"MARKER\", \"SOURCE\"}: return f\"--- {k['device']} {k['name']}\"+(f\"/{k['st_ms']:9.2f}ms\" if k['st_ms'] else \"\")\n       ptm = colored(time_to_str(k[\"dur_ms\"]*1e-3, w=9), \"yellow\" if k[\"dur_ms\"] > 10 else None)\n"
+  },
+  "tinygrad__tinygrad-16488": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16488",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16382": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16382",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15910": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15910",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16344": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16344",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15972": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15972",
+    "model_patch": "diff --git a/tinygrad/mixin/__init__.py b/tinygrad/mixin/__init__.py\nindex 946d697..8812a9d 100644\n--- a/tinygrad/mixin/__init__.py\n+++ b/tinygrad/mixin/__init__.py\n@@ -213,6 +213,15 @@ class OpMixin(ElementwiseMixin, ReduceMixin):\n       bits.append(cls._threefry_random_bits(new_key, counts0, counts1)[:chunk_num])\n     return bits[0].cat(*bits[1:])\n \n+  @staticmethod\n+  def _bits_to_rand(bits:Self, shape:tuple[int, ...], dtype:DType) -> Self:\n+    _, nmant = dtypes.finfo(dtype)\n+    uint_dtype = {1: dtypes.uint8, 2: dtypes.uint16, 4: dtypes.uint32, 8: dtypes.uint64}[dtype.itemsize]\n+    bits = bits.bitcast(uint_dtype)\n+    one = bits.ones_like(dtype=dtype).bitcast(uint_dtype)\n+    bits = bits.rshift(dtype.bitsize - nmant).bitwise_or(one)\n+    return bits.bitcast(dtype)[:prod(shape)].sub(1).reshape(shape)\n+\n   def _pad_constant(self, pX, value:float) -> Self:\n     # shrink first for negative pads, then pad with only non-negative values\n     pX = tuple((0, 0) if p is None else p for p in pX)\ndiff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex 17f3973..b9d37d2 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -591,15 +591,7 @@ class Tensor(OpMixin):\n     high = Tensor._device_rng_counters[device][1:2] - (num >> 32) - (Tensor._device_rng_counters[device][0] < (num & 0xffffffff)).cast(dtypes.uint32)\n     bits = Tensor.random_bits(Tensor._device_seeds[device], low.cat(high), num)\n \n-    # bitcast to uint with same number of bits\n-    _, nmant = dtypes.finfo(dt)\n-    uint_dtype = {1: dtypes.uint8, 2: dtypes.uint16, 4: dtypes.uint32, 8: dtypes.uint64}[dt.itemsize]\n-    bits = bits.bitcast(uint_dtype)\n-    # only randomize the mantissa bits and set the exponent to 1\n-    one = Tensor.ones_like(bits, device=bits.device, dtype=dt).bitcast(uint_dtype)\n-    bits = bits.rshift(dt.bitsize - nmant).bitwise_or(one)\n-    # bitcast back to the original dtype and reshape\n-    out = bits.bitcast(dt)[:numel].sub(1).reshape(shape).requires_grad_(kwargs.get(\"requires_grad\"))\n+    out = Tensor._bits_to_rand(bits, shape, dt).requires_grad_(kwargs.get(\"requires_grad\"))\n     return out.contiguous() if contiguous else out\n \n   # ***** creation helper functions *****\n"
+  },
+  "tinygrad__tinygrad-16585": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16585",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16412": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16412",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16562": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16562",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15909": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15909",
+    "model_patch": "diff --git a/tinygrad/viz/cli.py b/tinygrad/viz/cli.py\nindex e678349..1c43122 100755\n--- a/tinygrad/viz/cli.py\n+++ b/tinygrad/viz/cli.py\n@@ -139,7 +139,7 @@ def main(args) -> None:\n \n   # ** Profiler printer\n   else:\n-    timelines = [(n,l) for n,l in profile[\"layout\"].items() if l.get(\"event_type\") == 0]\n+    timelines = [(n,l) for n,l in profile[\"layout\"].items() if isinstance(l, dict) and l.get(\"event_type\") == 0]\n     def produce_top_kernels() -> Iterator[dict]:\n       tagged = ((n,e) for n,l in timelines for e in l[\"events\"]) if args.src == \"ALL\" else ((args.src,e) for e in unwrap(data)[\"events\"])\n       agg:dict[tuple[str,str], tuple[float, int, int|None]] = {} # map (device, kernel name) to (total time, count and ref)\n"
+  },
+  "tinygrad__tinygrad-16538": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16538",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15889": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15889",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16372": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16372",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15903": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15903",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16255": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16255",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16268": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16268",
+    "model_patch": "diff --git a/tinygrad/uop/decompositions.py b/tinygrad/uop/decompositions.py\nindex d468f1a..944718e 100644\n--- a/tinygrad/uop/decompositions.py\n+++ b/tinygrad/uop/decompositions.py\n@@ -384,7 +384,7 @@ f2f_dt = { f:getattr(dtypes, f\"uint{f.bitsize}\") for f in dtypes.floats }\n \n def rne(v: UOp, s) -> UOp: return shr(v, s) + ((shr(v, s - 1) & 1) & ((v & ((1 << (s - 1)) - 1)).ne(0).cast(v.dtype) | (shr(v, s) & 1)))\n \n-def f2f(v, fr:DType, to:DType):\n+def f2f(v, fr:DType, to:DType, sat: bool = True):\n   fs, fb, (fe, fm), ts, tb, (te, tm) = fr.bitsize, exponent_bias(fr), dtypes.finfo(fr), to.bitsize, exponent_bias(to), dtypes.finfo(to)\n   # NB: denormals are zero!\n   if fe <= te and fm < tm:\n@@ -399,7 +399,7 @@ def f2f(v, fr:DType, to:DType):\n     is_nan = (nosign.eq(shl(1, fm + fe) - 1) if fr == dtypes.fp8e4m3 else exp.eq(shl(1, fe) - 1))\n     return (sign | exp.eq(0).where(0, is_nan.where(nan, norm))).bitcast(to)\n   elif fe >= te and fm > tm:\n-    v = f2f_clamp(v.bitcast(fr), to).bitcast(f2f_dt[fr])\n+    v = f2f_clamp(v.bitcast(fr), to, sat=sat).bitcast(f2f_dt[fr])\n     sign, nosign = shr(v, fs - ts) & shl(1, ts - 1), v & (shl(1, fs - 1) - 1)\n     norm = (rne(nosign, fm - tm) - shl(fb - tb, tm)).cast(f2f_dt[to])\n     underflow = (shr(v, fm) & (shl(1, fe) - 1)) < (1 + fb - tb)\n@@ -410,14 +410,14 @@ def f2f(v, fr:DType, to:DType):\n     return is_nan.where(nan, sign.cast(f2f_dt[to]) | underflow.where(0, norm))\n   else: raise NotImplementedError(f\"unsupported decomp {fr} -> {to}\")\n \n-def f2f_clamp(val:UOp, dt:DType) -> UOp:\n+def f2f_clamp(val:UOp, dt:DType, sat: bool = True) -> UOp:\n   e, m = dtypes.finfo(dt)\n   if dt in dtypes.fp8_fnuz: max_exp, max_man = (1 << e) - 1, (1 << m) - 1\n   else: max_exp, max_man = ((1 << e) - 1, (1 << m) - 2) if dt == dtypes.fp8e4m3 else ((1 << e) - 2, (1 << m) - 1)\n   mx = val.const_like(2.0**(max_exp - exponent_bias(dt)) * (1.0 + max_man / (1 << m)))\n-  sat = mx if dt in dtypes.fp8s else val.const_like(float('inf'))\n+  sat_val = mx if dt in dtypes.fp8s else val.const_like(float('inf'))\n   # FIXME: CMPLT of nan is undefined\n-  return val.ne(val).where(val, (val < -mx).where(-sat, (mx < val).where(sat, val)))\n+  return val.ne(val).where(val, (val < -mx).where(-sat_val if sat else val, (mx < val).where(sat_val if sat else val, val)))\n \n def f2f_load(x: UOp, fr:DType, to:DType) -> UOp:\n   if (n:=x.dtype.count) == 1: return f2f(x.replace(dtype=f2f_dt[fr]), fr, to)\n"
+  },
+  "tinygrad__tinygrad-15898": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15898",
+    "model_patch": "diff --git a/tinygrad/mixin/elementwise.py b/tinygrad/mixin/elementwise.py\nindex c722064..6a2571f 100644\n--- a/tinygrad/mixin/elementwise.py\n+++ b/tinygrad/mixin/elementwise.py\n@@ -567,7 +567,7 @@ class ElementwiseMixin(DTypeMixin, CreationMixin):\n     ```\n     \"\"\"\n     is_finite_close = self.isfinite() & other.isfinite() & ((self - other).abs() <= atol + rtol * other.abs())\n-    is_infinite_close = (self.isinf() | other.isinf()) & (self == other)\n+    is_infinite_close = (self.isinf() | other.isinf()) & self.eq(other)\n     is_nan_close = (self.isnan() & other.isnan()) & equal_nan\n     return is_finite_close | is_infinite_close | is_nan_close\n \n"
+  },
+  "tinygrad__tinygrad-16385": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16385",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16559": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16559",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16169": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16169",
+    "model_patch": "diff --git a/tinygrad/uop/spec.py b/tinygrad/uop/spec.py\nindex 944daec..a248142 100644\n--- a/tinygrad/uop/spec.py\n+++ b/tinygrad/uop/spec.py\n@@ -80,7 +80,7 @@ spec_shared = PatternMatcher([\n   (UPat(Ops.DEFINE_REG, src=(), name=\"x\"), lambda x: isinstance(x.arg, int)),\n \n   # AFTER on Movement Op, PARAM, BUFFER, or another AFTER\n-  (UPat(Ops.AFTER, src=(UPat(GroupOp.Movement.union({Ops.PARAM, Ops.BUFFER, Ops.DEFINE_REG, Ops.DEFINE_LOCAL, Ops.AFTER, Ops.MULTI, Ops.BITCAST})),),\n+  (UPat(Ops.AFTER, src=(UPat(GroupOp.Movement.union({Ops.PARAM, Ops.BUFFER, Ops.DEFINE_REG, Ops.DEFINE_LOCAL, Ops.AFTER, Ops.MULTI, Ops.BITCAST, Ops.CONTIGUOUS})),),\n         allow_any_len=True), lambda: True),\n \n   # CUSTOM (inline and non inline)\n"
+  },
+  "tinygrad__tinygrad-16311": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16311",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15902": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15902",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16170": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16170",
+    "model_patch": "diff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex 21cd8d4..24ddbbb 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -1057,7 +1057,7 @@ class Tensor(OpMixin):\n   def __delitem__(self, indices) -> None:\n     raise TypeError(\"Tensor does not support deleting items\")\n \n-  def masked_select(self, mask):\n+  def masked_select(self, mask, size: int | None = None, fill_value: ConstType = 0):\n     \"\"\"\n     Selects elements from `self` based on the boolean `mask`.\n \n@@ -1076,9 +1076,15 @@ class Tensor(OpMixin):\n     mask_cumsum = mask.cumsum()\n     counts = Tensor.zeros(mask_cumsum[-1].item() if mask.numel() else 0, dtype=dtypes.int32, device=self.device)\n     idxs = counts.scatter(0, mask_cumsum, 1, reduce='add').cumsum()\n-    return x[idxs]\n+    res = x[idxs]\n+    if size is not None:\n+      if res.shape[0] > size:\n+        res = res[:size]\n+      elif res.shape[0] < size:\n+        res = res.pad((0, size - res.shape[0]), value=fill_value)\n+    return res\n \n-  def nonzero(self) -> Tensor:\n+  def nonzero(self, size: int | None = None, fill_value: ConstType = 0) -> Tensor:\n     \"\"\"\n     Returns the indices of the elements that are non-zero.\n \n@@ -1103,7 +1109,13 @@ class Tensor(OpMixin):\n     mask = (self != 0).flatten()\n     indices = Tensor.stack(*[Tensor.arange(s, device=self.device).reshape(*[1]*i, s, *[1]*(self.ndim-i-1)).expand(self.shape).flatten()\n                              for i, s in enumerate(self.shape)], dim=-1)\n-    return indices.masked_select(mask.unsqueeze(-1).expand(*mask.shape, self.ndim)).reshape(-1, self.ndim)\n+    res = indices.masked_select(mask.unsqueeze(-1).expand(*mask.shape, self.ndim)).reshape(-1, self.ndim)\n+    if size is not None:\n+      if res.shape[0] > size:\n+        res = res[:size]\n+      elif res.shape[0] < size:\n+        res = res.pad(((0, size - res.shape[0]), (0, 0)), value=fill_value)\n+    return res\n \n   # ***** reduce ops *****\n \n"
+  },
+  "tinygrad__tinygrad-16510": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16510",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16493": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16493",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16496": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16496",
+    "model_patch": "diff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex bf8dc53..8e10e9b 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -263,7 +263,7 @@ class Tensor(OpMixin):\n     if not is_disk and x.uop.device is not None and self.device is not None and self.device != x.device:\n       raise RuntimeError(f\"assign device mismatch {self.device} != {x.device}\")\n     if not is_disk and self.dtype != x.dtype: raise RuntimeError(f\"assign dtype mismatch {self.dtype} != {x.dtype}\")\n-    if isinstance(self.device, tuple) and self.uop.axis != x.uop.axis: raise RuntimeError(f\"multi axis mismatch {self.uop.axis} != {x.uop.axis}\")\n+    if isinstance(self.device, tuple) and self.uop.axis != x.uop.axis and x.uop.axis is not None: raise RuntimeError(f\"multi axis mismatch {self.uop.axis} != {x.uop.axis}\")\n \n     # TODO: this is a hack for writing to DISK. remove with working assign\n     if is_disk:\n"
+  },
+  "tinygrad__tinygrad-15897": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15897",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16173": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16173",
+    "model_patch": "diff --git a/tinygrad/mixin/__init__.py b/tinygrad/mixin/__init__.py\nindex c238244..f9cc96f 100644\n--- a/tinygrad/mixin/__init__.py\n+++ b/tinygrad/mixin/__init__.py\n@@ -1458,6 +1458,24 @@ class OpMixin(ElementwiseMixin, ReduceMixin):\n                                                  for i,p in enumerate(params)))\n     return G\n \n+  def qr(self) -> tuple[Self, Self]:\n+    assert self.ndim > 1, f\"expected two or more dimensions, got {self.ndim}\"\n+    b_shape, m, n = self.shape[:-2], int(self.shape[-2]), int(self.shape[-1])\n+    R, Q = self, type(self).eye(m, dtype=self.dtype, device=self.device).expand(b_shape + (m, m))\n+    idx = type(self).arange(m, device=self.device)\n+    for i in range(min(m, n)):\n+      # full-length Householder reflector v with zeros above row i; w = tau*v is the rank-1 update factor\n+      at_i, x = idx == i, (idx >= i).where(R[..., :, i], 0)\n+      norm = x.square().sum(-1, keepdim=True).sqrt()\n+      x0 = at_i.where(x, 0).sum(-1, keepdim=True)\n+      sgn, active = (x0 != 0).where(x0.sign(), 1), norm != 0\n+      u0 = x0 + sgn * norm\n+      v = (at_i.where(u0, x) / active.where(u0, 1)).unsqueeze(-1)\n+      w = active.where(sgn * u0 / active.where(norm, 1), 0).unsqueeze(-1) * v\n+      R = R - w @ (v.transpose(-2, -1) @ R)\n+      Q = Q - (Q @ v) @ w.transpose(-2, -1)\n+    return Q, R\n+\n   # ***** tensor properties *****\n \n   def nbytes(self) -> int:\ndiff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex fb455c7..c90afe0 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -1408,24 +1408,6 @@ class Tensor(OpMixin):\n       qk = qk + attn_mask\n     return qk.cast(self.dtype).softmax(-1).dropout(dropout_p) @ value\n \n-  def qr(self) -> tuple[Tensor, Tensor]:\n-    assert self.ndim > 1, f\"expected two or more dimensions, got {self.ndim}\"\n-    b_shape, m, n = self.shape[:-2], int(self.shape[-2]), int(self.shape[-1])\n-    R, Q = self, Tensor.eye(m, dtype=self.dtype, device=self.device).expand(b_shape + (m, m))\n-    idx = Tensor.arange(m, device=self.device)\n-    for i in range(min(m, n)):\n-      # full-length Householder reflector v with zeros above row i; w = tau*v is the rank-1 update factor\n-      at_i, x = idx == i, (idx >= i).where(R[..., :, i], 0)\n-      norm = x.square().sum(-1, keepdim=True).sqrt()\n-      x0 = at_i.where(x, 0).sum(-1, keepdim=True)\n-      sgn, active = (x0 != 0).where(x0.sign(), 1), norm != 0\n-      u0 = x0 + sgn * norm\n-      v = (at_i.where(u0, x) / active.where(u0, 1)).unsqueeze(-1)\n-      w = active.where(sgn * u0 / active.where(norm, 1), 0).unsqueeze(-1) * v\n-      R = R - w @ (v.transpose(-2, -1) @ R)\n-      Q = Q - (Q @ v) @ w.transpose(-2, -1)\n-    return Q, R\n-\n   def svd(self, full_matrices = True) -> tuple[Tensor, Tensor, Tensor]:\n     #partial implementation of https://www.netlib.org/lapack/lawnspdf/lawn169.pdf , pg 26\n     assert self.ndim > 1, f\"expected two or more dimensions, got {self.ndim}\"\n"
+  },
+  "tinygrad__tinygrad-16066": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16066",
+    "model_patch": "diff --git a/tinygrad/uop/symbolic.py b/tinygrad/uop/symbolic.py\nindex 0d31fae..2390f3b 100644\n--- a/tinygrad/uop/symbolic.py\n+++ b/tinygrad/uop/symbolic.py\n@@ -42,10 +42,10 @@ def fold_add_divmod_recombine(x:UOp) -> UOp|None:\n       if not exact and div > 0 and base.op is Ops.FLOORDIV and base.src[1].op is Ops.CONST:\n         exact = q.op is Ops.FLOORDIV and q.src[1].op is Ops.CONST and q.src[0] is base.src[0] and q.src[1].arg == base.src[1].arg*div\n       if exact: return (base*mul).usum(*[t for k,t in enumerate(terms) if k not in (i,j)])\n-      # ((base//div)%d)*div + base%div -> base%(div*d)\n-      if mul == 1 and div > 0 and q.op is Ops.FLOORMOD and q.src[1].op is Ops.CONST and (d:=q.src[1].arg) > 0 and q.src[0].op is Ops.FLOORDIV:\n+      # ((base//div)%d)*(div*mul) + (base%div)*mul -> (base%(div*d))*mul\n+      if div > 0 and q.op is Ops.FLOORMOD and q.src[1].op is Ops.CONST and (d:=q.src[1].arg) > 0 and q.src[0].op is Ops.FLOORDIV:\n         if q.src[0].src[0] is base and q.src[0].src[1].op is Ops.CONST and q.src[0].src[1].arg == div:\n-          return (base % (div*d)).usum(*[t for k,t in enumerate(terms) if k not in (i,j)])\n+          return ((base % (div*d)) * mul).usum(*[t for k,t in enumerate(terms) if k not in (i,j)])\n   return None\n \n # this needs to be before symbolic so that 0*something_that_might_be_invalid doesnt become 0\n"
+  },
+  "tinygrad__tinygrad-16298": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-16298",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15895": {
+    "model_name_or_path": "openrouter/deepseek/deepseek-v4-flash",
+    "instance_id": "tinygrad__tinygrad-15895",
+    "model_patch": ""
+  }
+}

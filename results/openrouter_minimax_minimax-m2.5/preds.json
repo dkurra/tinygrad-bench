@@ -1,0 +1,147 @@
+{
+  "tinygrad__tinygrad-16990": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16990",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16999": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16999",
+    "model_patch": "diff --git a/tinygrad/helpers.py b/tinygrad/helpers.py\nindex 92b3362..625aa70 100644\n--- a/tinygrad/helpers.py\n+++ b/tinygrad/helpers.py\n@@ -572,11 +572,18 @@ class tqdm(Generic[T]):\n def trange(n:int, **kwargs) -> tqdm[int]: return tqdm(range(n), total=n, **kwargs)\n \n class disable_gc(contextlib.ContextDecorator):\n+  def __init__(self):\n+    self._recurse_count = 0\n+    self._was_enabled = None\n   def __enter__(self):\n-    self._was_enabled = gc.isenabled()\n-    if self._was_enabled: gc.disable()\n+    if self._recurse_count == 0:\n+      self._was_enabled = gc.isenabled()\n+      if self._was_enabled: gc.disable()\n+    self._recurse_count += 1\n   def __exit__(self, *exc):\n-    if self._was_enabled: gc.enable()\n+    self._recurse_count -= 1\n+    if self._recurse_count == 0 and self._was_enabled:\n+      gc.enable()\n \n # *** universal support for code object pickling\n \n"
+  },
+  "tinygrad__tinygrad-16924": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16924",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16847": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16847",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16956": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16956",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16551": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16551",
+    "model_patch": "diff --git a/tinygrad/mixin/rand.py b/tinygrad/mixin/rand.py\nindex c846830..10e308c 100644\n--- a/tinygrad/mixin/rand.py\n+++ b/tinygrad/mixin/rand.py\n@@ -24,6 +24,8 @@ class RandMixin(OpMixin):\n       counts0 = cls.arange(ceildiv(chunk_num, 2), dtype=dtypes.uint32)\n       counts1 = counts0 + ceildiv(chunk_num, 2)\n       bits.append(cls._threefry_random_bits(new_key, counts0, counts1)[:chunk_num])\n+    # Handle empty case: return empty tensor of uint32\n+    if len(bits) == 0: return counter[0:0]\n     return bits[0].cat(*bits[1:])\n \n   @staticmethod\n@@ -33,3 +35,14 @@ class RandMixin(OpMixin):\n     uint_bits = bits.bitcast(uint_dtype)\n     float_one_bits = uint_bits.const_like(1).cast(dtype).bitcast(uint_dtype)\n     return uint_bits.rshift(dtype.bitsize - nmant).bitwise_or(float_one_bits).bitcast(dtype)[:prod(shape)].sub(1).reshape(shape)\n+\n+  @classmethod\n+  def _rand(cls, key:Self, counter:Self, shape:tuple[int, ...], dtype:DType, contiguous:bool=True) -> Self:\n+    \"\"\"Generate a random tensor with the given shape and dtype from the key and counter.\"\"\"\n+    numel = prod(shape)\n+    if numel == 0:\n+      return cls.zeros(shape, dtype=dtype)\n+    num = ceildiv(numel * dtype.itemsize, 4)\n+    bits = cls.random_bits(key, counter, num)\n+    out = cls._bits_to_rand(bits, shape, dtype)\n+    return out.contiguous() if contiguous else out\ndiff --git a/tinygrad/tensor.py b/tinygrad/tensor.py\nindex 043eb12..0c03da1 100644\n--- a/tinygrad/tensor.py\n+++ b/tinygrad/tensor.py\n@@ -552,13 +552,9 @@ class Tensor(RandMixin):\n     if device is not None and not isinstance(device, str): raise ValueError(f\"rand only supports single device, got {device=}\")\n     device = cast(str, canonicalize_device(device))\n \n-    # if shape has 0, return zero tensor\n-    if (numel := prod(shape)) == 0: return Tensor.zeros(shape, device=device, dtype=dt)\n-    num = ceildiv(numel * dt.itemsize, 4)\n+    num = ceildiv(prod(shape) * dt.itemsize, 4)\n     key, counter = Tensor._next_counter(device, num)\n-    bits = Tensor.random_bits(key, counter, num)\n-    out = Tensor._bits_to_rand(bits, shape, dt)\n-    return out.contiguous() if contiguous else out\n+    return Tensor._rand(key, counter, shape, dt, contiguous)\n \n   # ***** creation helper functions *****\n \n"
+  },
+  "tinygrad__tinygrad-16896": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16896",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16831": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16831",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16925": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16925",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16602": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16602",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16363": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16363",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16588": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16588",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16132": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16132",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16865": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16865",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16325": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16325",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16423": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16423",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16489": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16489",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16821": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16821",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15948": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-15948",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15967": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-15967",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16811": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16811",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15931": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-15931",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16971": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16971",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16854": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16854",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15915": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-15915",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-15720": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-15720",
+    "model_patch": "diff --git a/tinygrad/apps/llm.py b/tinygrad/apps/llm.py\nindex fb8a325..fd65e30 100644\n--- a/tinygrad/apps/llm.py\n+++ b/tinygrad/apps/llm.py\n@@ -9,7 +9,7 @@ from tinygrad.viz.serve import TCPServerWithReuse, HTTPRequestHandler\n class SimpleTokenizer:\n   def __init__(self, normal_tokens:dict[str, int], special_tokens:dict[str, int], preset:str=\"llama3\"):\n     preset = {\"qwen35\":\"qwen2\",\"qwen35moe\":\"qwen2\"}.get(preset, preset)\n-    if preset not in (\"llama3\",\"llama-v3\",\"llama-bpe\",\"qwen2\",\"olmo\",\"kimi-k2\"): raise ValueError(f\"Invalid tokenizer preset '{preset}'\")\n+    if preset not in (\"llama3\",\"llama-v3\",\"llama-bpe\",\"qwen2\",\"olmo\",\"kimi-k2\",\"tekken\"): raise ValueError(f\"Invalid tokenizer preset '{preset}'\")\n     # https://github.com/openai/gpt-2/blob/9b63575ef42771a015060c964af2c3da4cf7c8ab/src/encoder.py#L9\n     bs = [*range(33, 127), *range(161, 173), *range(174, 256)]  # bytes that map to themselves\n     self._byte_decoder = {chr(b): b for b in bs} | {chr(256+i): b for i,b in enumerate(b for b in range(256) if b not in bs)}\n@@ -63,11 +63,16 @@ class SimpleTokenizer:\n     if self.preset == 'olmo': return self.encode(\"<|\" + role + \"|>\\n\")  # OLMoE Instruct format\n     if self.preset == 'kimi-k2': return self.encode(\"<|im_\" + role + \"|>\" + role + \"<|im_middle|>\")\n     if self.preset == 'qwen2': return self.encode(\"<|im_start|>\" + role + \"\\n\")\n+    if self.preset == 'tekken':\n+      if role == \"user\": return self.encode(\"[INST]\")\n+      if role == \"assistant\": return []\n+      raise ValueError(f\"Invalid role '{role}' for tekken preset\")\n     return self.encode(\"<|start_header_id|>\" + role + \"<|end_header_id|>\\n\\n\")\n   def end_turn(self, eos_id:int):\n     if self.preset == 'olmo': return self.encode(\"\\n\")\n     if self.preset == 'kimi-k2': return [eos_id]\n     if self.preset == 'qwen2': return [eos_id] + self.encode(\"\\n\")\n+    if self.preset == 'tekken': return self.encode(\"[/INST]\")\n     return [eos_id]\n \n @functools.cache\n"
+  },
+  "tinygrad__tinygrad-16754": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16754",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16823": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16823",
+    "model_patch": ""
+  },
+  "tinygrad__tinygrad-16162": {
+    "model_name_or_path": "openrouter/minimax/minimax-m2.5",
+    "instance_id": "tinygrad__tinygrad-16162",
+    "model_patch": "diff --git a/tinygrad/mixin/elementwise.py b/tinygrad/mixin/elementwise.py\nindex b530c9a..69ca60c 100644\n--- a/tinygrad/mixin/elementwise.py\n+++ b/tinygrad/mixin/elementwise.py\n@@ -750,7 +750,7 @@ class ElementwiseMixin(DTypeMixin, CreationMixin):\n     \"\"\"\n     return self * (self * 1.702).sigmoid()\n \n-  def gelu(self) -> Self:\n+  def gelu(self, approximate: str = \"tanh\") -> Self:\n     \"\"\"\n     Applies the Gaussian Error Linear Unit (GELU) function element-wise.\n \n@@ -760,7 +760,11 @@ class ElementwiseMixin(DTypeMixin, CreationMixin):\n     print(Tensor([-3., -2., -1., 0., 1., 2., 3.]).gelu().numpy())\n     ```\n     \"\"\"\n-    return 0.5 * self * (1 + (math.sqrt(2 / math.pi) * (self + 0.044715 * self ** 3)).tanh())\n+    if approximate == \"tanh\":\n+        return 0.5 * self * (1 + (math.sqrt(2 / math.pi) * (self + 0.044715 * self ** 3)).tanh())\n+    elif approximate == \"none\":\n+        return 0.5 * self * (1 + (self / math.sqrt(2)).erf())\n+    raise RuntimeError(f\"Invalid approximate value: {approximate}\")\n \n   def swish(self) -> Self:\n     \"\"\"\n"
+  }
+}
